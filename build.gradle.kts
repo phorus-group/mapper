@@ -4,6 +4,7 @@ plugins {
     kotlin("jvm") version "1.6.0-M1"
     `maven-publish`
     `java-library`
+    jacoco
 }
 
 group = "group.phorus"
@@ -41,8 +42,25 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
 
+// Jacoco config
+tasks.jacocoTestReport {
+    executionData.setFrom(fileTree(buildDir).include("/jacoco/*.exec"))
+
+    reports {
+        xml.required.set(true)
+        csv.required.set(true)
+    }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
+
+    finalizedBy(tasks.jacocoTestReport)
+
+    // If parallel tests start failing, instead of disabling this, take a look at @Execution(ExecutionMode.SAME_THREAD)
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "same_thread")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
 }
 
 tasks.withType<KotlinCompile> {
