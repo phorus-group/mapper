@@ -14,7 +14,7 @@ repositories {
     mavenCentral()
     maven {
         name = "gitlabPackageRegistry"
-        url = uri("https://gitlab.com/api/v4/groups/13397873/-/packages/maven")
+        url = uri("https://gitlab.com/api/v4/groups/51305899/-/packages/maven")
 
         credentials(HttpHeaderCredentials::class.java) {
             (project.findProperty("gitlabPackageRegistryToken") as String?)
@@ -24,7 +24,7 @@ repositories {
                 }
                 ?: also {
                     name = "Deploy-Token"
-                    value = System.getenv("TOKEN")
+                    value = System.getenv("CI_BUILD_TOKEN ")
                 }
         }
         authentication {
@@ -74,7 +74,7 @@ publishing {
                     }
                     ?: also {
                         name = "Deploy-Token"
-                        value = System.getenv("TOKEN")
+                        value = System.getenv("CI_BUILD_TOKEN")
                     }
             }
             authentication {
