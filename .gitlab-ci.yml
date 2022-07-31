@@ -1,0 +1,8 @@
+include:   
+  - project: "phorus-group/private/devops/ci-cd-templates"
+    file: "gradle-lib.ci.yml"
+
+variables:
+  GRADLE_UNIT_TEST_DISABLED: "true"
+  GRADLE_INT_TEST_DISABLED: "true"
+  GRADLE_BUILD_AND_TEST: "true"
