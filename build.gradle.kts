@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "group.phorus"
-version = "0.0.12"
+version = "1.0.0"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
@@ -24,7 +24,7 @@ repositories {
                 }
                 ?: also {
                     name = "Deploy-Token"
-                    value = System.getenv("CI_BUILD_TOKEN ")
+                    value = System.getenv("MAIN_DEPLOY_TOKEN_READONLY")
                 }
         }
         authentication {
@@ -74,7 +74,7 @@ publishing {
                     }
                     ?: also {
                         name = "Deploy-Token"
-                        value = System.getenv("CI_BUILD_TOKEN")
+                        value = System.getenv("MAIN_DEPLOY_TOKEN")
                     }
             }
             authentication {
