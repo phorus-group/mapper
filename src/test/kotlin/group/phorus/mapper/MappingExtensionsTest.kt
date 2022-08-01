@@ -8,8 +8,8 @@ import kotlin.test.assertNotNull
 
 // TODO: Add updateFrom method to replace the "baseObject" property in the mapTo function
 //  Make the mapTo method woth with <> type
+//  Compound customMappings
 //  Add a performance test comparing the mapping speed of the library with jackson convertValue function
-//  Change custom mapping functions to use a Triple instead of a nested Pairs
 
 internal class MappingExtensionsTest {
     
@@ -69,7 +69,7 @@ internal class MappingExtensionsTest {
         fun `map from one object to another manually mapping a property`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo(PersonDTO::class, mappings = hashMapOf("name" to "nameStr"))
+            val result = person.mapTo(PersonDTO::class, mappings = mapOf("name" to "nameStr"))
 
             assertNotNull(result)
 
@@ -83,7 +83,7 @@ internal class MappingExtensionsTest {
         fun `map from one object to another manually mapping a property with the wrong type`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo(PersonDTO::class, mappings = hashMapOf("age" to "nameStr"))
+            val result = person.mapTo(PersonDTO::class, mappings = mapOf("age" to "nameStr"))
 
             assertNotNull(result)
 
@@ -97,7 +97,7 @@ internal class MappingExtensionsTest {
         fun `map from one object to another manually mapping a nonexistent property`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo(PersonDTO::class, mappings = hashMapOf("abcdef" to "nameStr"))
+            val result = person.mapTo(PersonDTO::class, mappings = mapOf("abcdef" to "nameStr"))
 
             assertNotNull(result)
 
@@ -118,7 +118,7 @@ internal class MappingExtensionsTest {
 
             val result = person.mapTo(
                 PersonDTO::class,
-                customMappings = hashMapOf("age" to ("ageStr" to parseManually)),
+                customMappings = mapOf("age" to (parseManually to "ageStr")),
             )
 
             assertNotNull(result)
@@ -141,7 +141,7 @@ internal class MappingExtensionsTest {
 
             val result = person.mapTo(
                 PersonDTO::class,
-                customMappings = hashMapOf("name" to ("ageStr" to parseManually)),
+                customMappings = mapOf("name" to (parseManually to "ageStr")),
             )
 
             assertNotNull(result)
@@ -163,7 +163,7 @@ internal class MappingExtensionsTest {
 
             val result = person.mapTo(
                 PersonDTO::class,
-                customMappings = hashMapOf("age" to Pair("ageStr", parseManually)),
+                customMappings = mapOf("age" to (parseManually to "ageStr")),
             )
 
             assertNotNull(result)
@@ -185,7 +185,7 @@ internal class MappingExtensionsTest {
 
             val result = person.mapTo(
                 PersonDTO::class,
-                customMappings = hashMapOf("abcdef" to Pair("ageStr", parseManually)),
+                customMappings = mapOf("abcdef" to (parseManually to "ageStr")),
             )
 
             assertNotNull(result)
@@ -206,8 +206,8 @@ internal class MappingExtensionsTest {
 
             val result = person.mapTo(
                 PersonDTO::class,
-                mappings = hashMapOf("name" to "nameStr"),
-                customMappings = hashMapOf("name" to Pair("nameStr", parseManually)),
+                mappings = mapOf("name" to "nameStr"),
+                customMappings = mapOf("name" to (parseManually to "nameStr")),
             )
 
             assertNotNull(result)
@@ -229,8 +229,8 @@ internal class MappingExtensionsTest {
             val result = person.mapTo(
                 PersonDTO::class,
                 exclusions = listOf("surname"),
-                hashMapOf("name" to "nameStr"),
-                hashMapOf("age" to Pair("ageStr", parseManually)),
+                mappings = mapOf("name" to "nameStr"),
+                customMappings = mapOf("age" to (parseManually to "ageStr")),
             )
 
             assertNotNull(result)
@@ -302,7 +302,7 @@ internal class MappingExtensionsTest {
 
             val result = wifi.mapTo(
                 WifiDTO::class,
-                customMappings = hashMapOf("wifiPassword" to Pair("wifiPassword", addFiveToInt)),
+                customMappings = mapOf("wifiPassword" to (addFiveToInt to "wifiPassword")),
             )
 
             assertNotNull(result)
@@ -358,7 +358,7 @@ internal class MappingExtensionsTest {
 
             val result = hotel.mapTo(
                 HotelDTO::class,
-                customMappings = hashMapOf("numberOfGuests" to Pair("numberOfGuests", addFiveToInt)),
+                customMappings = mapOf("numberOfGuests" to (addFiveToInt to "numberOfGuests")),
             )
 
             assertNotNull(result)
@@ -390,7 +390,7 @@ internal class MappingExtensionsTest {
 
             val result = hotel.mapTo(
                 HotelDTO::class,
-                customMappings = hashMapOf("hotelRooms" to Pair("hotelRooms", functionReturningColl)),
+                customMappings = mapOf("hotelRooms" to (functionReturningColl to "hotelRooms")),
             )
 
             assertNotNull(result)
@@ -422,7 +422,7 @@ internal class MappingExtensionsTest {
 
             val result = hotel.mapTo(
                 HotelDTO::class,
-                customMappings = hashMapOf("hotelRooms" to Pair("hotelRooms", functionReturningColl)),
+                customMappings = mapOf("hotelRooms" to (functionReturningColl to "hotelRooms")),
             )
 
             assertNotNull(result)
@@ -599,7 +599,7 @@ internal class MappingExtensionsTest {
             }
 
             @Test
-            fun `map from one object with a super compound collection to another relying in the MapFrom annotation`() {
+            fun `map from one object with a compound collection to another relying in the MapFrom annotation`() {
                 val hotel = Hotel(
                     hotelRooms = setOf(
                         Room(Person(23, "nameTest", "surnameTest"), "roomName1"),
@@ -614,7 +614,7 @@ internal class MappingExtensionsTest {
 
                 val result = hotel.mapTo(
                     HotelWAnnotationDTO::class,
-                    customMappings = hashMapOf("numberOfGuests" to Pair("numberOfGuests", addFiveToInt)),
+                    customMappings = mapOf("numberOfGuests" to (addFiveToInt to "numberOfGuests")),
                 )
 
                 assertNotNull(result)

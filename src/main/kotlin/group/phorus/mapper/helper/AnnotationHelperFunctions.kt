@@ -2,7 +2,6 @@ package group.phorus.mapper.helper
 
 import group.phorus.mapper.enums.MappingFallback
 import group.phorus.mapper.MapFrom
-import java.util.HashMap
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.memberProperties
@@ -13,7 +12,7 @@ internal fun handleMapFromAnnotation(
     originalEntity: Any,
     entity: Any,
     exclusions: List<String>? = null,
-    mappings: HashMap<String, String>? = null,
+    mappings: Map<String, String>? = null,
 ): Boolean {
     val (locations, fallback) = getAnnotationFields(prop)
     locations?.forEachIndexed locationsLoop@{ index, location ->
@@ -47,8 +46,8 @@ internal inline fun <reified A, reified B> handleMapFromAnnotation(
     originalEntity: Any,
     entity: Any,
     exclusions: List<String>? = null,
-    mappings: HashMap<String, String>? = null,
-    customMappings: HashMap<String, Pair<String, (source: A) -> B>>? = null,
+    mappings: Map<String, String>? = null,
+    customMappings: Map<String, Pair<(source: A) -> B, String>>? = null,
 ): Boolean {
     val (locations, fallback) = getAnnotationFields(prop)
     locations?.forEachIndexed locationsLoop@{ index, location ->

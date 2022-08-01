@@ -2,12 +2,6 @@ package group.phorus.mapper
 
 import group.phorus.mapper.enums.MappingReturnCodes
 import group.phorus.mapper.helper.*
-import group.phorus.mapper.helper.*
-import group.phorus.mapper.helper.getClassType
-import group.phorus.mapper.helper.getMappedCollection
-import group.phorus.mapper.helper.getPropTypes
-import group.phorus.mapper.helper.handleMapFromAnnotation
-import group.phorus.mapper.helper.mapValue
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KProperty
@@ -16,11 +10,28 @@ import kotlin.reflect.full.isSuperclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.jvmErasure
 
+
+/**
+ *
+ * 1- Iterar entre todos los props del target y guardar en un Map<String, KMutableProperty<*>>
+ * 2- Iterar entre todos los props del origin y guardar en un Map<String, KMutableProperty<*>>
+ * 3- Mapear campos con mismo nombre / key, seteando mediante un setter / constructor, o llamando a mapTo nuevamente
+ * 4- Para mapear usando el constructor, usar kclass.constructor.parameters y ver si el existe un constructor
+ *      con los parametros necesarios, en caso que exista utilizarlo con constructor.callBy
+ * 5- Al buscar dicho constructor, guardar los parametros que si existen en el constructor y los que no pero tienen setter
+ * 6- Crear anotacion de clase para preferir mappear con setters o con constructores primero, tambien dar la opcion
+ *      en el metodo para hacerlo en el mappeo entero
+ * 7- Hacer que la recursividad del mapTo sea llamando a un metodo interno que devuelva un map de referencias
+ *      Map<String, KMutableProperty<*>>, de forma tal que todos los mapeos se pueda hacer al final de la primera ejecucion
+ *
+ *
+ */
+
 inline fun <T : Any, reified A, reified B> Any.mapTo(
     entityClass: KClass<out T>? = null,
     exclusions: List<String>? = null,
-    mappings: HashMap<String, String>? = null,
-    customMappings: HashMap<String, Pair<String, (source: A) -> B>>? = null,
+    mappings: Map<String, String>? = null,
+    customMappings: Map<String, Pair<(source: A) -> B, String>>? = null,
     baseObject: T? = null,
 ): T? {
     val entity: T
@@ -72,7 +83,7 @@ inline fun <T : Any, reified A, reified B> Any.mapTo(
 fun <T : Any> Any.mapTo(
     entityClass: KClass<out T>? = null,
     exclusions: List<String>? = null,
-    mappings: HashMap<String, String>? = null,
+    mappings: Map<String, String>? = null,
     baseObject: T? = null,
 ): T? {
     val entity: T
@@ -116,7 +127,7 @@ fun <T : Any> Any.mapTo(
 internal fun getNewValue(
     prop1: KProperty<*>,
     prop2: KProperty<*>,
-    mappings: HashMap<String, String>?,
+    mappings: Map<String, String>?,
     originalProp: Any,
 ): Any? {
     val (targetPropType, originalPropType) = getPropTypes(prop1, prop2)
@@ -142,7 +153,7 @@ internal fun getNewValue(
 internal inline fun <reified A, reified B> getNewValueCustomMappings(
     prop1: KProperty<*>,
     prop2: KProperty<*>,
-    customMappings: HashMap<String, Pair<String, (source: A) -> B>>? = null,
+    customMappings: Map<String, Pair<(source: A) -> B, String>>? = null,
     originalProp: Any,
 ): Any? {
     val (targetPropType, originalPropType) = getPropTypes(prop1, prop2)
@@ -153,7 +164,7 @@ internal inline fun <reified A, reified B> getNewValueCustomMappings(
         return MappingReturnCodes.NORMAL_MAPPING
 
     // If the target prop is not found, skip and look for the right one
-    if (prop1.name != customMappings[prop2.name]?.first)
+    if (prop1.name != customMappings[prop2.name]?.second)
         return MappingReturnCodes.CUSTOM_MAPPING
 
     // If source of the data don't have the same type as the input of the function, map using the normal mapping
@@ -161,7 +172,7 @@ internal inline fun <reified A, reified B> getNewValueCustomMappings(
         return MappingReturnCodes.NORMAL_MAPPING
 
     // If the return value is null, return null
-    val newVal = customMappings[prop2.name]?.second!!(originalProp as A) ?: return MappingReturnCodes.CUSTOM_MAPPING
+    val newVal = customMappings[prop2.name]?.first!!(originalProp as A) ?: return MappingReturnCodes.CUSTOM_MAPPING
 
 
     // If the props are iterables, then map the subProps
