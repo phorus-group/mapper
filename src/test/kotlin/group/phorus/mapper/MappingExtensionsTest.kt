@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
 // TODO: Add updateFrom method to replace the "baseObject" property in the mapTo function
+//  Add a test checking that mappings and custom mappings don't work if the field is excluded
 //  Make the mapTo method woth with <> type
+//  Support vararg params
 //  Compound customMappings
 //  Add a performance test comparing the mapping speed of the library with jackson convertValue function
 
