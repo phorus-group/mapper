@@ -31,7 +31,8 @@ inline fun <reified T: Any> buildObject(
             if (property !is KMutableProperty<*>)
                 return@forEach
 
-            // TODO: Map the prop.value with mapTo in case is different than expected
+            // TODO: Map the prop.value with mapTo in case is different than expected, maybe not necessary since they
+            //  should be are already mapped
 
             property.setter.call(builtObject, prop.value)
         }
@@ -48,11 +49,14 @@ inline fun <reified T: Any> buildObject(
  */
 inline fun <reified T: Any> buildObjectWithConstructor(
     properties: Map<String, Any?> = emptyMap(),
-): Pair<T?, Map<String, Any?>> {
+): Pair<T?, Map<String, Any?>> { // TODO: Is not necessary to return the value
 
     // Place to save the constructor params and the matched properties and values, or the optional or nullable
     //  constructor params
     var constructorParams = mapOf<KParameter, Pair<String, Any?>?>()
+
+    // Amount of unneeded params in the saved constructor
+    var constructorUnneededParams = Integer.MAX_VALUE
 
     // Chosen constructor, take the first one by default
     var constructor: KFunction<T>? = null
@@ -62,34 +66,46 @@ inline fun <reified T: Any> buildObjectWithConstructor(
 
         // Place to save the constructor params and the matched properties and values
         val params = mutableMapOf<KParameter, Pair<String, Any?>?>()
+        var unneededParams = 0
 
         // Iterate through all the parameters of the constructor
         constr.parameters.forEach { param ->
 
             // Try to find a property with the same name as the parameter
-            val prop = properties.asSequence().firstOrNull { it.key == param.name }?.toPair()
+            val prop = properties.asSequence().firstOrNull { it.key == param.name }?.toPair() // TODO: Change to .value
 
             // If the lookup failed and the constructor param is not optional or nullable, the
             //  constructor cannot be used because of the missing params, so we'll skip to the next constructor
-            if (prop == null && !param.isOptional && !param.type.isMarkedNullable)
-                return@nextConstructor
+            if (prop == null) {
+                if (!param.isOptional && !param.type.isMarkedNullable) {
+                    return@nextConstructor
+                }
+                // If the lookup failed but the param is optional or nullable, we'll increase the count of
+                //  unneeded params in this constructor, this will be used to select the constructor with the most
+                //  matched params but also with the less amount of unneeded params
+                unneededParams++
+            }
 
             // If the constructor param matches one property, or the constructor param is optional or nullable, save
             //  it with the property and its value
             params[param] = prop
         }
 
-        // Save the constructor and the params if there are more property matches than the one currently saved
         val paramsMatched = params.values.count { it != null }
         val savedParamsMatched = constructorParams.values.count { it != null }
-        if (paramsMatched >= savedParamsMatched) {
+        if ((paramsMatched == savedParamsMatched && unneededParams <= constructorUnneededParams)
+            || paramsMatched > savedParamsMatched) {
+            // If the matched params are the same in this constructor and the saved one, choose the one with less
+            //  unneeded params
+            // If not, save the constructor and the params if there are more property matches than the one currently saved
             constructorParams = params
+            constructorUnneededParams = unneededParams
             constructor = constr
         }
     }
 
     // TODO: Call the mapTo function to map the value of the properties, take the property type from the kproperty and
-    //  the target type from the kparam
+    //  the target type from the kparam, probably not necessary since they should be already mapped
 
     // Remove the optional params, we want to use the defaults instead of setting them to null
     // Don't remove the matched params or the params that are not optional, if a param is not optional
@@ -108,7 +124,7 @@ inline fun <reified T: Any> buildObjectWithConstructor(
 
     // Get the properties that couldn't be set with the constructor
     // Get a list of used param names
-    val usedParams = constructorParams.mapNotNull { it.value }.map { it.first }
+    val usedParams = constructorParams.mapNotNull { consParam -> consParam.value?.let { consParam.key.name } }
 
     // Filter out the used properties
     val nonMatchedProperties = properties.filterNot { it.key in usedParams }

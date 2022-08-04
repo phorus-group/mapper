@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Nested
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.memberProperties
 
+// TODO: Check:
+//  Aug 03, 2022 9:19:57 PM org.junit.jupiter.engine.config.EnumConfigurationParameterConverter get
+//  INFO: Using parallel execution mode 'SAME_THREAD' set via the 'junit.jupiter.execution.parallel.mode.default' configuration parameter.
 internal class PropertySetFunctionsTests {
 
     // Test constructor 0
@@ -17,17 +20,37 @@ internal class PropertySetFunctionsTests {
 
         var middleName: String? = null
 
+        var constructorUsed: Int? = 1
+
         // Test constructor 2
-        constructor(name: String, age: Int) : this(name, "defaultSurname", age, false)
+        constructor(name: String, age: Int) : this(name, "defaultSurname", age, false) {
+            constructorUsed = 2
+        }
 
         // Test constructor 3
-        constructor (name: String) : this(name, "defaultSurname", 1, false)
+        constructor (name: String) : this(name, "defaultSurname", 1, false) {
+            constructorUsed = 3
+        }
 
         // Test constructor 4
-        constructor(name: String?, sex: Boolean) : this(name ?: "defaultName", "defaultSurname", 1, sex)
+        constructor(name: String?, sex: Boolean) : this(name ?: "defaultName", "defaultSurname", 1, sex) {
+            constructorUsed = 4
+        }
 
         // Test constructor 5
-        constructor(age: Int = 20, sex: Boolean, surname: String) : this("defaultName", surname, age, sex)
+        constructor(age: Int = 20, sex: Boolean, surname: String) : this("defaultName", surname, age, sex) {
+            constructorUsed = 5
+        }
+
+        // Test constructor 6
+        constructor (name: String, tmp: String?) : this(name, "defaultSurname", 1, false) {
+            constructorUsed = 6
+        }
+
+        // Test constructor 7
+        constructor (name: String, test: Double = 1.0) : this(name, "defaultSurname", 1, false) {
+            constructorUsed = 7
+        }
     }
 
     @Nested
@@ -60,6 +83,8 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // A constructor with all the params exists
+            assertEquals(1, result.first?.constructorUsed)
+
             assertEquals("testName", result.first?.name)
             assertEquals("testSurname", result.first?.surname)
             assertEquals(10, result.first?.age)
@@ -82,6 +107,8 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // A constructor with 2 of 3 params exists
+            assertEquals(2, result.first?.constructorUsed)
+
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
             assertEquals(10, result.first?.age)
@@ -103,6 +130,9 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // A constructor with 1 of 3 params exists
+            // The function will use the constructor 3, and not the 6 and 7 because they have more unneeded params
+            assertEquals(3, result.first?.constructorUsed)
+
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
             assertEquals(1, result.first?.age)
@@ -124,6 +154,8 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // A constructor with 1 of 3 params exists
+            assertEquals(4, result.first?.constructorUsed)
+
             assertEquals("defaultName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
             assertEquals(1, result.first?.age)
@@ -146,6 +178,8 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // A constructor with 1 of 3 params exists
+            assertEquals(5, result.first?.constructorUsed)
+
             assertEquals("defaultName", result.first?.name)
             assertEquals("testSurname", result.first?.surname)
             assertEquals(20, result.first?.age)
@@ -168,6 +202,37 @@ internal class PropertySetFunctionsTests {
 
             // A constructor only with the "age" param doesn't exist
             assertNull(result.first)
+
+            // 2 properties couldn't be set using the constructor
+            assertEquals(2, result.second.size)
+            assertEquals(10, result.second.asSequence().first { it.key == "age" }.value)
+            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+        }
+
+        @Test
+        fun `find a no args constructor`() {
+            class PersonNoArgs() {
+                var constructorUsed = 1
+
+                // Test constructor 2
+                constructor(tmp: String?) : this() {
+                    constructorUsed = 2
+                }
+            }
+
+            // Try to find a constructor only with the "age" param
+            val props = mapOf(
+                "age" to 10,
+                "middleName" to "Jr",
+            )
+
+            val result = buildObjectWithConstructor<PersonNoArgs>(props)
+
+            // A no args constructor exists
+            assertNotNull(result.first)
+
+            // The no args constructor is used because it has less unneeded params
+            assertEquals(1, result.first?.constructorUsed)
 
             // 2 properties couldn't be set using the constructor
             assertEquals(2, result.second.size)
