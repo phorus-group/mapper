@@ -1,13 +1,10 @@
 package group.phorus.mapper.helper
 
-import group.phorus.mapper.mapTo
 import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
-import kotlin.reflect.full.defaultType
-import kotlin.reflect.jvm.jvmErasure
 
 /**
  * Builds an object and sets its properties using a constructor and then setters, or only setters if the option is active
@@ -33,11 +30,17 @@ inline fun <reified T: Any> buildObject(
         .filter { if (useSettersOnly) true else it.key.name in unsetProperties }
         .forEach { prop ->
             val property = prop.key
+
+            // If the property is not mutable it doesn't have any setters
             if (property !is KMutableProperty<*>)
                 return@forEach
 
+            // If prop value is null and the property is not nullable we cannot use the setter anyway
+            if (prop.value == null && !property.setter.parameters.first().type.isMarkedNullable)
+                return@forEach
+
             // TODO If the value type and the property type are different, then return
-//            if (originalPropType != targetPropType && targetPropType != Any::class.qualifiedName.toString()) {
+//            if (originalPropType != targetPropType && targetPropType != Any::class.qualifiedName.toString())
 //                return originalProp.mapTo(prop1.returnType.jvmErasure)
 //            }
 

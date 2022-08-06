@@ -316,6 +316,14 @@ internal class PropertySetFunctionsTests {
         val address: String = "defaultAddress"
     }
 
+    // Test constructor 4
+    class Person5() {
+
+        var middleName: String = "defaultMiddleName"
+
+        val address: String = "defaultAddress"
+    }
+
     @Nested
     inner class `Build object with constructor and setters`() {
 
@@ -398,6 +406,50 @@ internal class PropertySetFunctionsTests {
             // A no args constructor exists
             // This property has been set using the setters
             assertEquals("Jr", result?.middleName)
+
+            // This property couldn't be set because it is a val, so it doesn't have setters
+            assertEquals("defaultAddress", result?.address)
+        }
+
+        @Test
+        fun `set a property to null with setters - Test constructor 3`() {
+            // Try to find a constructor only with all the params
+            val props: Map<KProperty<*>, Any?> = Person4::class.memberProperties
+                .associate {
+                    when(it.name) {
+                        "middleName" -> it to null
+                        "address" -> it to "testAddress"
+                        else -> it to null
+                    }
+                }
+
+            val result = buildObject<Person4>(props)
+
+            // A no args constructor exists
+            // This property has been set using the setters
+            assertNull(result?.middleName)
+
+            // This property couldn't be set because it is a val, so it doesn't have setters
+            assertEquals("defaultAddress", result?.address)
+        }
+
+        @Test
+        fun `try to set a non-nullable property to null with setters - Test constructor 4`() {
+            // Try to find a constructor only with all the params
+            val props: Map<KProperty<*>, Any?> = Person4::class.memberProperties
+                .associate {
+                    when(it.name) {
+                        "middleName" -> it to null
+                        "address" -> it to "testAddress"
+                        else -> it to null
+                    }
+                }
+
+            val result = buildObject<Person5>(props)
+
+            // A no args constructor exists
+            // This property has not been set using the setters, because it's non-nullable
+            assertEquals("defaultMiddleName", result?.middleName)
 
             // This property couldn't be set because it is a val, so it doesn't have setters
             assertEquals("defaultAddress", result?.address)
