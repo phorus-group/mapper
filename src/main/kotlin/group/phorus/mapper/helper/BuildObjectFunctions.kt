@@ -31,20 +31,26 @@ inline fun <reified T: Any> buildObject(
         .forEach { prop ->
             val property = prop.key
 
-            // If the property is not mutable it doesn't have any setters
+            // If the property is not mutable it doesn't have any setters, return
             if (property !is KMutableProperty<*>)
                 return@forEach
 
-            // If prop value is null and the property is not nullable we cannot use the setter anyway
-            if (prop.value == null && !property.setter.parameters.first().type.isMarkedNullable)
-                return@forEach
+            val propertyType = property.setter.parameters.first().type
+            if (prop.value == null) {
+                // If the prop value is null and the setter is not nullable, return, if not, use the setter
+                if (!propertyType.isMarkedNullable) {
+                    return@forEach
+                } else {
+                    property.setter.call(builtObject, prop.value)
+                }
+            }
 
-            // TODO If the value type and the property type are different, then return
-//            if (originalPropType != targetPropType && targetPropType != Any::class.qualifiedName.toString())
-//                return originalProp.mapTo(prop1.returnType.jvmErasure)
-//            }
+            val propValueType = prop.value!!::class.qualifiedName
+            val propertyValueType = property.setter.property.returnType.toString().replace("?", "")
 
-            property.setter.call(builtObject, prop.value)
+            // If the prop value and the setter have the same type, use the setter
+            if (propValueType == propertyValueType)
+                property.setter.call(builtObject, prop.value)
         }
 
     return builtObject
@@ -116,15 +122,14 @@ inline fun <reified T: Any> buildObjectWithConstructor(
                 if (param.type.isMarkedNullable)
                     params[param] = PropertyWrapper(prop.value)
             } else {
-                // If the param is nullable, save the property and its null value
-                params[param] = PropertyWrapper(prop.value)
+                // Save the property and its value if the param and prop have the same types
+                val propValueType = prop.value!!::class.qualifiedName
+                val paramValueType = param.type.toString().replace("?", "")
+
+                // If the prop value and the setter have the same type, use the setter
+                if (propValueType == paramValueType)
+                    params[param] = PropertyWrapper(prop.value)
             }
-
-//            val propType = getPropType(prop)
-
-            // TODO If the property value and the param has different types:
-            //  - If the param is nullable or optional, set the value to null, increase unneeded params, and continue
-            //  - If the param is not nullable or optional, return
         }
 
         // Count the amount of params matched with properties, we include the ones with value == null since they're

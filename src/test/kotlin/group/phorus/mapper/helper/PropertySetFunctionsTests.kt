@@ -20,41 +20,46 @@ internal class PropertySetFunctionsTests {
 
         var middleName: String? = null
 
-        var constructorUsed: Int? = 1
+        var constructorUsed: Double? = 1.0
 
         // Test constructor 2
         constructor(name: String, age: Int) : this(name, "defaultSurname", age, false) {
-            constructorUsed = 2
+            constructorUsed = 2.0
         }
 
         // Test constructor 3
         constructor (name: String) : this(name, "defaultSurname", 1, false) {
-            constructorUsed = 3
+            constructorUsed = 3.0
+        }
+
+        // Test constructor 3.2
+        constructor (name: Int) : this("defaultName", "defaultSurname", 1, false) {
+            constructorUsed = 3.2
         }
 
         // Test constructor 4
         constructor(name: String?, sex: Boolean) : this(name ?: "defaultName", "defaultSurname", 1, sex) {
-            constructorUsed = 4
+            constructorUsed = 4.0
         }
 
         // Test constructor 5
         constructor(age: Int = 20, sex: Boolean, surname: String) : this("defaultName", surname, age, sex) {
-            constructorUsed = 5
+            constructorUsed = 5.0
         }
 
         // Test constructor 6
         constructor (name: String, tmp: String?) : this(name, "defaultSurname", 1, false) {
-            constructorUsed = 6
+            constructorUsed = 6.0
         }
 
         // Test constructor 7
         constructor (name: String, test: Double = 1.0) : this(name, "defaultSurname", 1, false) {
-            constructorUsed = 7
+            constructorUsed = 7.0
         }
 
         // Test constructor 8
         constructor (name: String, tmp: String, test: Double = 1.0) : this(name, "defaultSurname", 1, false) {
-            constructorUsed = 8
+            constructorUsed = 8.0
         }
     }
 
@@ -62,7 +67,7 @@ internal class PropertySetFunctionsTests {
     inner class `Build object with constructor`() {
 
         @Test
-        fun `find constructor with no params - Test constructor 0`() {
+        fun `find a constructor with no params - Test constructor 0`() {
             // Try to find a constructor only with all the params
             val props = emptyMap<String, String>()
 
@@ -75,7 +80,7 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with all the params - Test constructor 1`() {
+        fun `find a constructor with all the params - Test constructor 1`() {
             // Try to find a constructor only with all the params
             val props = mapOf(
                 "name" to "testName",
@@ -87,7 +92,7 @@ internal class PropertySetFunctionsTests {
 
             val result = buildObjectWithConstructor<Person>(props)
 
-            assertEquals(1, result.first?.constructorUsed)
+            assertEquals(1.0, result.first?.constructorUsed)
 
             assertEquals("testName", result.first?.name)
             assertEquals("testSurname", result.first?.surname)
@@ -100,7 +105,7 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with 2 params - Test constructor 2`() {
+        fun `find a constructor with 2 params - Test constructor 2`() {
             // Try to find a constructor only with the "name" and "age" param
             val props = mapOf(
                 "name" to "testName",
@@ -110,7 +115,7 @@ internal class PropertySetFunctionsTests {
 
             val result = buildObjectWithConstructor<Person>(props)
 
-            assertEquals(2, result.first?.constructorUsed)
+            assertEquals(2.0, result.first?.constructorUsed)
 
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
@@ -123,7 +128,7 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with 1 param - Test constructor 3`() {
+        fun `find a constructor with 1 param - Test constructor 3`() {
             // Try to find a constructor only with the "name" param
             val props = mapOf(
                 "name" to "testName",
@@ -133,7 +138,7 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // The function will use the constructor 3, and not the 6 and 7 because they have more unneeded params
-            assertEquals(3, result.first?.constructorUsed)
+            assertEquals(3.0, result.first?.constructorUsed)
 
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
@@ -146,7 +151,49 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with 2 params, but one is nullable - Test constructor 4`() {
+        fun `find a constructor with 1 param, but use the wrong type - Test constructor 3`() {
+            // Try to find a constructor only with the "name" param
+            val props = mapOf(
+                "name" to true,
+                "middleName" to "Jr",
+            )
+
+            val result = buildObjectWithConstructor<Person>(props)
+
+            // The function won't use the constructor 3, since specified value has the wrong type
+            assertNull(result.first)
+
+            // 1 property couldn't be set using the constructor
+            assertEquals(2, result.second.size)
+            assertTrue(result.second.contains("name"))
+            assertTrue(result.second.contains("middleName"))
+        }
+
+        @Test
+        fun `find a constructor with 1 param with the right type - Test constructor 3`() {
+            // Try to find a constructor only with the "name" param
+            val props = mapOf(
+                "name" to 5,
+                "middleName" to "Jr",
+            )
+
+            val result = buildObjectWithConstructor<Person>(props)
+
+            // The function will use the constructor 3.2 instead of the 3 because of the value type
+            assertEquals(3.2, result.first?.constructorUsed)
+
+            assertEquals("defaultName", result.first?.name)
+            assertEquals("defaultSurname", result.first?.surname)
+            assertEquals(1, result.first?.age)
+            assertEquals(false, result.first?.sex)
+
+            // 1 property couldn't be set using the constructor
+            assertEquals(1, result.second.size)
+            assertTrue(result.second.contains("middleName"))
+        }
+
+        @Test
+        fun `find a constructor with 2 params, but one is nullable - Test constructor 4`() {
             // Try to find a constructor only with the "sex" param
             val props = mapOf(
                 "sex" to true,
@@ -155,7 +202,7 @@ internal class PropertySetFunctionsTests {
 
             val result = buildObjectWithConstructor<Person>(props)
 
-            assertEquals(4, result.first?.constructorUsed)
+            assertEquals(4.0, result.first?.constructorUsed)
 
             assertEquals("defaultName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
@@ -168,7 +215,7 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with all params, but one param has a default value - Test constructor 5`() {
+        fun `find a constructor with all params, but one param has a default value - Test constructor 5`() {
             val props = mapOf(
                 "surname" to "testSurname",
                 "sex" to true,
@@ -177,7 +224,7 @@ internal class PropertySetFunctionsTests {
 
             val result = buildObjectWithConstructor<Person>(props)
 
-            assertEquals(5, result.first?.constructorUsed)
+            assertEquals(5.0, result.first?.constructorUsed)
 
             assertEquals("defaultName", result.first?.name)
             assertEquals("testSurname", result.first?.surname)
@@ -190,7 +237,7 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with 2 params while trying to set one property as null explicitly - Test constructor 6`() {
+        fun `set a nullable property as null explicitly - Test constructor 6`() {
             val props = mapOf(
                 "name" to "testName",
                 "tmp" to null,
@@ -200,7 +247,7 @@ internal class PropertySetFunctionsTests {
             val result = buildObjectWithConstructor<Person>(props)
 
             // The function will use the constructor 6, because we are trying to explicitly set the "tmp" field to null
-            assertEquals(6, result.first?.constructorUsed)
+            assertEquals(6.0, result.first?.constructorUsed)
 
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
@@ -213,7 +260,7 @@ internal class PropertySetFunctionsTests {
         }
 
         @Test
-        fun `find constructor with 3 params while trying to set one property as null explicitly - Test constructor 8`() {
+        fun `try to set a non-nullable property as null explicitly - Test constructor 8`() {
             val props = mapOf(
                 "name" to "testName",
                 "tmp" to "tmpTest",
@@ -226,7 +273,7 @@ internal class PropertySetFunctionsTests {
             // The function will use the constructor 8, because we are trying to explicitly set the "test" field to
             //  null, but the field is not nullable, luckily the field is optional so the constructor
             //  can be used anyway
-            assertEquals(8, result.first?.constructorUsed)
+            assertEquals(8.0, result.first?.constructorUsed)
 
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
@@ -328,7 +375,7 @@ internal class PropertySetFunctionsTests {
     inner class `Build object with constructor and setters`() {
 
         @Test
-        fun `find constructor with all the params, and set the last property with setters - Test constructor 1`() {
+        fun `find a constructor with all the params, and set the last property with setters - Test constructor 1`() {
             // Try to find a constructor only with all the params
             val props: Map<KProperty<*>, Any?> = Person2::class.memberProperties
                 .associate {
@@ -449,6 +496,28 @@ internal class PropertySetFunctionsTests {
 
             // A no args constructor exists
             // This property has not been set using the setters, because it's non-nullable
+            assertEquals("defaultMiddleName", result?.middleName)
+
+            // This property couldn't be set because it is a val, so it doesn't have setters
+            assertEquals("defaultAddress", result?.address)
+        }
+
+        @Test
+        fun `try to set a property with the wrong type with setters - Test constructor 4`() {
+            // Try to find a constructor only with all the params
+            val props: Map<KProperty<*>, Any?> = Person4::class.memberProperties
+                .associate {
+                    when(it.name) {
+                        "middleName" -> it to 5
+                        "address" -> it to "testAddress"
+                        else -> it to null
+                    }
+                }
+
+            val result = buildObject<Person5>(props)
+
+            // A no args constructor exists
+            // This property has not been set using the setters, the value was ignored since it had a wrong type
             assertEquals("defaultMiddleName", result?.middleName)
 
             // This property couldn't be set because it is a val, so it doesn't have setters
