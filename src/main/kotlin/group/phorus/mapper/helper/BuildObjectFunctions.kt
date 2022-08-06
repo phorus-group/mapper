@@ -1,10 +1,13 @@
 package group.phorus.mapper.helper
 
+import group.phorus.mapper.mapTo
 import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.defaultType
+import kotlin.reflect.jvm.jvmErasure
 
 /**
  * Builds an object and sets its properties using a constructor and then setters, or only setters if the option is active
@@ -33,7 +36,10 @@ inline fun <reified T: Any> buildObject(
             if (property !is KMutableProperty<*>)
                 return@forEach
 
-            // TODO If the value type and the property type are different, then return, consider collections
+            // TODO If the value type and the property type are different, then return
+//            if (originalPropType != targetPropType && targetPropType != Any::class.qualifiedName.toString()) {
+//                return originalProp.mapTo(prop1.returnType.jvmErasure)
+//            }
 
             property.setter.call(builtObject, prop.value)
         }
@@ -56,7 +62,8 @@ inline fun <reified T: Any> buildObjectWithConstructor(
 
     // Place to save the constructor params and the matched properties and values, or the optional or nullable
     //  constructor params
-    var constructorParams = mapOf<KParameter, Pair<String, Any?>?>()
+    // We wrap the values to be able to differentiate if the value was set to null explicitly or not
+    var constructorParams = mapOf<KParameter, PropertyWrapper<Any?>?>()
 
     // Amount of unneeded params in the saved constructor
     var constructorUnneededParams = Integer.MAX_VALUE
@@ -68,36 +75,57 @@ inline fun <reified T: Any> buildObjectWithConstructor(
     T::class.constructors.forEach nextConstructor@ { constr ->
 
         // Place to save the constructor params and the matched properties and values
-        val params = mutableMapOf<KParameter, Pair<String, Any?>?>()
+        val params = mutableMapOf<KParameter, PropertyWrapper<Any?>?>()
         var unneededParams = 0
 
         // Iterate through all the parameters of the constructor
         constr.parameters.forEach { param ->
 
             // Try to find a property with the same name as the parameter
-            val prop = properties.asSequence().firstOrNull { it.key == param.name }?.toPair() // TODO: Change to .value
+            val prop = properties.asSequence().firstOrNull { it.key == param.name }
 
             // If the lookup failed and the constructor param is not optional or nullable, the
             //  constructor cannot be used because of the missing params, so we'll skip to the next constructor
             if (prop == null) {
-                if (!param.isOptional && !param.type.isMarkedNullable) {
+                if (!param.isOptional && !param.type.isMarkedNullable)
                     return@nextConstructor
-                }
+
                 // If the lookup failed but the param is optional or nullable, we'll increase the count of
                 //  unneeded params in this constructor, this will be used to select the constructor with the most
                 //  matched params but also with the less amount of unneeded params
                 unneededParams++
+
+                // If the param is nullable, save null as the value
+                if (param.type.isMarkedNullable)
+                    params[param] = null
+
+            } else if (prop.value == null) {
+                // If the lookup worked but the property value is null, that means the user is trying to explicitly
+                //  set the property to null
+
+                // If the constructor param is nor nullable or optional, we have a property that wants to set a not
+                //  nullable param to null, and that param cannot be skipped, so we'll skip the constructor
+                //  since it cannot be used
+                if (!param.type.isMarkedNullable && !param.isOptional)
+                    return@nextConstructor
+
+                // If the param is nullable, save the property and its null value
+                if (param.type.isMarkedNullable)
+                    params[param] = PropertyWrapper(prop.value)
+            } else {
+                // If the param is nullable, save the property and its null value
+                params[param] = PropertyWrapper(prop.value)
             }
 
-            // TODO If the property value and the param has different types, consider collections and:
+//            val propType = getPropType(prop)
+
+            // TODO If the property value and the param has different types:
             //  - If the param is nullable or optional, set the value to null, increase unneeded params, and continue
             //  - If the param is not nullable or optional, return
-
-            // If the constructor param matches one property, or the constructor param is optional or nullable, save
-            //  it with the property and its value
-            params[param] = prop
         }
 
+        // Count the amount of params matched with properties, we include the ones with value == null since they're
+        //  explicitly set
         val paramsMatched = params.values.count { it != null }
         val savedParamsMatched = constructorParams.values.count { it != null }
         if ((paramsMatched == savedParamsMatched && unneededParams <= constructorUnneededParams)
@@ -118,7 +146,7 @@ inline fun <reified T: Any> buildObjectWithConstructor(
 
     // Create the object using the saved constructor and matched params
     val builtObject: T? = try {
-        val args = constructorParams.map { it.key to it.value?.second }.associate { it }
+        val args = constructorParams.map { it.key to it.value?.value }.associate { it }
         constructor?.callBy(args) ?: T::class.createInstance()
     } catch (e: Exception) {
         // If the constructor is null because the object doesn't have one, and the createInstance() fails because
@@ -135,3 +163,5 @@ inline fun <reified T: Any> buildObjectWithConstructor(
 
     return builtObject to nonMatchedProperties
 }
+
+data class PropertyWrapper<T>(val value: T)
