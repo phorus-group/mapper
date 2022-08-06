@@ -8,6 +8,8 @@ import kotlin.reflect.full.createInstance
 
 /**
  * Builds an object and sets its properties using a constructor and then setters, or only setters if the option is active
+ * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
+ *  are different, then the value will be ignored
  *
  * @param T type of the class to build
  * @param properties properties to set with their value
@@ -41,6 +43,8 @@ inline fun <reified T: Any> buildObject(
 
 /**
  * Tries to create an object T setting as many parameters as possible with the constructor
+ * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
+ *  are different, then the value will be ignored
  *
  * @param T type of the class to build
  * @param properties properties to use in the object constructor with their value
