@@ -31,8 +31,7 @@ inline fun <reified T: Any> buildObject(
             if (property !is KMutableProperty<*>)
                 return@forEach
 
-            // TODO: Map the prop.value with mapTo in case is different than expected, maybe not necessary since they
-            //  should be are already mapped
+            // TODO If the value type and the property type are different, then return, consider collections
 
             property.setter.call(builtObject, prop.value)
         }
@@ -49,7 +48,7 @@ inline fun <reified T: Any> buildObject(
  */
 inline fun <reified T: Any> buildObjectWithConstructor(
     properties: Map<String, Any?> = emptyMap(),
-): Pair<T?, Map<String, Any?>> { // TODO: Is not necessary to return the value
+): Pair<T?, List<String>> {
 
     // Place to save the constructor params and the matched properties and values, or the optional or nullable
     //  constructor params
@@ -86,6 +85,10 @@ inline fun <reified T: Any> buildObjectWithConstructor(
                 unneededParams++
             }
 
+            // TODO If the property value and the param has different types, consider collections and:
+            //  - If the param is nullable or optional, set the value to null, increase unneeded params, and continue
+            //  - If the param is not nullable or optional, return
+
             // If the constructor param matches one property, or the constructor param is optional or nullable, save
             //  it with the property and its value
             params[param] = prop
@@ -103,9 +106,6 @@ inline fun <reified T: Any> buildObjectWithConstructor(
             constructor = constr
         }
     }
-
-    // TODO: Call the mapTo function to map the value of the properties, take the property type from the kproperty and
-    //  the target type from the kparam, probably not necessary since they should be already mapped
 
     // Remove the optional params, we want to use the defaults instead of setting them to null
     // Don't remove the matched params or the params that are not optional, if a param is not optional
@@ -127,7 +127,7 @@ inline fun <reified T: Any> buildObjectWithConstructor(
     val usedParams = constructorParams.mapNotNull { consParam -> consParam.value?.let { consParam.key.name } }
 
     // Filter out the used properties
-    val nonMatchedProperties = properties.filterNot { it.key in usedParams }
+    val nonMatchedProperties = properties.filterNot { it.key in usedParams }.map { it.key }
 
     return builtObject to nonMatchedProperties
 }

@@ -4,12 +4,12 @@ import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.memberProperties
 
-// TODO: Check:
-//  Aug 03, 2022 9:19:57 PM org.junit.jupiter.engine.config.EnumConfigurationParameterConverter get
-//  INFO: Using parallel execution mode 'SAME_THREAD' set via the 'junit.jupiter.execution.parallel.mode.default' configuration parameter.
 internal class PropertySetFunctionsTests {
 
     // Test constructor 0
@@ -92,7 +92,7 @@ internal class PropertySetFunctionsTests {
 
             // 1 property couldn't be set using the constructor
             assertEquals(1, result.second.size)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("middleName"))
         }
 
         @Test
@@ -116,7 +116,7 @@ internal class PropertySetFunctionsTests {
 
             // 1 property couldn't be set using the constructor
             assertEquals(1, result.second.size)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("middleName"))
         }
 
         @Test
@@ -140,7 +140,7 @@ internal class PropertySetFunctionsTests {
 
             // 1 property couldn't be set using the constructor
             assertEquals(1, result.second.size)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("middleName"))
         }
 
         @Test
@@ -163,7 +163,7 @@ internal class PropertySetFunctionsTests {
 
             // 1 property couldn't be set using the constructor
             assertEquals(1, result.second.size)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("middleName"))
         }
 
         @Test
@@ -187,7 +187,7 @@ internal class PropertySetFunctionsTests {
 
             // 1 property couldn't be set using the constructor
             assertEquals(1, result.second.size)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("middleName"))
         }
 
         @Test
@@ -205,8 +205,8 @@ internal class PropertySetFunctionsTests {
 
             // 2 properties couldn't be set using the constructor
             assertEquals(2, result.second.size)
-            assertEquals(10, result.second.asSequence().first { it.key == "age" }.value)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("age"))
+            assertTrue(result.second.contains("middleName"))
         }
 
         @Test
@@ -236,8 +236,8 @@ internal class PropertySetFunctionsTests {
 
             // 2 properties couldn't be set using the constructor
             assertEquals(2, result.second.size)
-            assertEquals(10, result.second.asSequence().first { it.key == "age" }.value)
-            assertEquals("Jr", result.second.asSequence().first { it.key == "middleName" }.value)
+            assertTrue(result.second.contains("age"))
+            assertTrue(result.second.contains("middleName"))
         }
     }
 
