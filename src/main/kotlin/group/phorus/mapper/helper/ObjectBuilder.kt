@@ -19,21 +19,21 @@ class ObjectBuilder {
      *
      * @param T type of the class to build
      * @param properties properties to set with their value
-     * @param useSettersOnly option to use setters only
+     * @param settersOnly option to use setters only
      */
-    inline fun <reified T: Any> buildObject(
+    inline fun <reified T: Any> build(
         properties: Map<KProperty<*>, Value?>,
-        useSettersOnly: Boolean = false,
+        settersOnly: Boolean = false,
     ): T? {
-        val (builtObject, unsetProperties) = buildObjectWithConstructor<T>(
-            if (useSettersOnly) emptyMap() else properties.map { it.key.name to it.value }.associate { it }
+        val (builtObject, unsetProperties) = buildWithConstructor<T>(
+            if (settersOnly) emptyMap() else properties.map { it.key.name to it.value }.associate { it }
         )
 
         if (builtObject == null)
             return null
 
         properties
-            .filter { if (useSettersOnly) true else it.key.name in unsetProperties }
+            .filter { if (settersOnly) true else it.key.name in unsetProperties }
             .forEach { prop ->
                 val property = prop.key
 
@@ -71,7 +71,7 @@ class ObjectBuilder {
      * @param properties properties to use in the object constructor with their value
      * @return the built object and the properties that couldn't be set with the constructor
      */
-    inline fun <reified T: Any> buildObjectWithConstructor(
+    inline fun <reified T: Any> buildWithConstructor(
         properties: Map<String, Value?> = emptyMap(),
     ): Pair<T?, List<String>> {
 
