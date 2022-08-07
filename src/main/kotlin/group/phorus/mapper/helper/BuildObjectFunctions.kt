@@ -6,6 +6,8 @@ import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
 
+typealias Value = Any
+
 /**
  * Builds an object and sets its properties using a constructor and then setters, or only setters if the option is active
  * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
@@ -16,7 +18,7 @@ import kotlin.reflect.full.createInstance
  * @param useSettersOnly option to use setters only
  */
 inline fun <reified T: Any> buildObject(
-    properties: Map<KProperty<*>, Any?>,
+    properties: Map<KProperty<*>, Value?>,
     useSettersOnly: Boolean = false,
 ): T? {
     val (builtObject, unsetProperties) = buildObjectWithConstructor<T>(
@@ -66,13 +68,13 @@ inline fun <reified T: Any> buildObject(
  * @return the built object and the properties that couldn't be set with the constructor
  */
 inline fun <reified T: Any> buildObjectWithConstructor(
-    properties: Map<String, Any?> = emptyMap(),
+    properties: Map<String, Value?> = emptyMap(),
 ): Pair<T?, List<String>> {
 
     // Place to save the constructor params and the matched properties and values, or the optional or nullable
     //  constructor params
     // We wrap the values to be able to differentiate if the value was set to null explicitly or not
-    var constructorParams = mapOf<KParameter, PropertyWrapper<Any?>?>()
+    var constructorParams = mapOf<KParameter, PropertyWrapper<Value?>?>()
 
     // Amount of unneeded params in the saved constructor
     var constructorUnneededParams = Integer.MAX_VALUE
@@ -84,7 +86,7 @@ inline fun <reified T: Any> buildObjectWithConstructor(
     T::class.constructors.forEach nextConstructor@ { constr ->
 
         // Place to save the constructor params and the matched properties and values
-        val params = mutableMapOf<KParameter, PropertyWrapper<Any?>?>()
+        val params = mutableMapOf<KParameter, PropertyWrapper<Value?>?>()
         var unneededParams = 0
 
         // Iterate through all the parameters of the constructor

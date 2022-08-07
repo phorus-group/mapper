@@ -4,13 +4,10 @@ import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.*
 
-internal class PropertySetFunctionsTests {
+internal class BuildObjectFunctionsTest {
 
     // Test constructor 0
     data class Pet(var name: String? = null)
