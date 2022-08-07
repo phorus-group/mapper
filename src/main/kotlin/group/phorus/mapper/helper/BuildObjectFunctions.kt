@@ -48,7 +48,7 @@ inline fun <reified T: Any> buildObject(
             }
 
             val propValueType = prop.value!!::class.qualifiedName
-            val propertyValueType = property.setter.property.returnType.toString().replace("?", "")
+            val propertyValueType = property.returnType.toString().replace("?", "")
 
             // If the prop value and the setter have the same type, use the setter
             if (propValueType == propertyValueType)
