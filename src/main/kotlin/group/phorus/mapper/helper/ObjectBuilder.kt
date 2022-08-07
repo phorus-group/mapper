@@ -13,27 +13,37 @@ class ObjectBuilder {
     data class PropertyWrapper<T>(val value: T)
 
     /**
-     * Builds an object and sets its properties using a constructor and then setters, or only setters if the option is active
-     * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
-     *  are different, then the value will be ignored
+     * Builds an object and sets its properties using a constructor
+     * If some properties couldn't be set using the constructor, they'll be set through setters if possible.
+     * You can also specify a base class to update instead of building a new one.
+     * This function doesn't do mapping, the property value must be mapped beforehand, if the value type and the
+     *  parameter type are different, then the value will be ignored
      *
      * @param T type of the class to build
-     * @param properties properties to set with their value
-     * @param settersOnly option to use setters only
+     * @param properties to set with their value
+     * @param settersOnly option to use setters only, not needed if a baseClass is used
+     * @param baseClass if specified, the class will be updated using setters instead of creating a new one
+     * @return the built or updated class, or null
      */
-    inline fun <reified T: Any> build(
+    inline fun <reified T: Any> buildOrUpdate(
         properties: Map<KProperty<*>, Value?>,
         settersOnly: Boolean = false,
+        baseClass: T? = null,
     ): T? {
-        val (builtObject, unsetProperties) = buildWithConstructor<T>(
-            if (settersOnly) emptyMap() else properties.map { it.key.name to it.value }.associate { it }
-        )
+
+        val (builtObject, unsetProperties) = if (baseClass == null) {
+            buildWithConstructor<T>(
+                if (settersOnly) emptyMap() else properties.map { it.key.name to it.value }.associate { it }
+            )
+        } else {
+            baseClass to emptyList()
+        }
 
         if (builtObject == null)
             return null
 
         properties
-            .filter { if (settersOnly) true else it.key.name in unsetProperties }
+            .filter { if (settersOnly || baseClass != null) true else it.key.name in unsetProperties }
             .forEach { prop ->
                 val property = prop.key
 

@@ -18,7 +18,7 @@ internal class ObjectBuilderTests {
 
             var middleName: String? = null
 
-            var constructorUsed: Double? = 1.0
+            var constructorUsed = 1.0
 
             // Test constructor 2
             constructor(name: String, age: Int) : this(name, "defaultSurname", age, false) {
@@ -341,7 +341,7 @@ internal class ObjectBuilderTests {
 
     class BuildWSettersTestClasses {
         // Test constructor 1
-        data class Person(var name: String, var surname: String, var age: Int, var sex: Boolean) {
+        class Person(var name: String, var surname: String, var age: Int, var sex: Boolean) {
 
             var middleName: String? = null
 
@@ -350,7 +350,7 @@ internal class ObjectBuilderTests {
 
         // Test constructor 2
         // The function can autocomplete the nullable fields with null, it's not necessary to have a null default value
-        data class Person2(var name: String?, var surname: String?, var age: Int?, var sex: Boolean?) {
+        class Person2(var name: String?, var surname: String?, var age: Int?, var sex: Boolean?) {
 
             var middleName: String? = null
 
@@ -358,7 +358,18 @@ internal class ObjectBuilderTests {
         }
 
         // Test constructor 3
-        class Person3() {
+        // The function can autocomplete the nullable fields with null, it's not necessary to have a null default value
+        class Person3(var name: String?, var surname: String?, var age: Int?, var sex: Boolean?) {
+
+            var constructorUsed = 0
+
+            init {
+                constructorUsed = 1
+            }
+
+            constructor() : this(null, null, null, null) {
+                constructorUsed = 2
+            }
 
             var middleName: String? = null
 
@@ -366,7 +377,15 @@ internal class ObjectBuilderTests {
         }
 
         // Test constructor 4
-        class Person4() {
+        class Person4 {
+
+            var middleName: String? = null
+
+            val address: String = "defaultAddress"
+        }
+
+        // Test constructor 5
+        class Person5 {
 
             var middleName: String = "defaultMiddleName"
 
@@ -393,7 +412,7 @@ internal class ObjectBuilderTests {
                     }
                 }
 
-            val result = objectBuilder.build<BuildWSettersTestClasses.Person>(props)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person>(props)
 
             // A constructor with all the params exists
             assertEquals("testName", result?.name)
@@ -409,8 +428,7 @@ internal class ObjectBuilderTests {
         }
 
         @Test
-        fun `find no args constructor, and set the properties with setters forcefully - Test constructor 2`() {
-            // Try to find a constructor only with all the params
+        fun `find no args constructor to set all the properties with setters forcefully - Test constructor 2`() {
             val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person2::class.memberProperties
                 .associate {
                     when(it.name) {
@@ -424,15 +442,13 @@ internal class ObjectBuilderTests {
                     }
                 }
 
-            val result = objectBuilder.build<BuildWSettersTestClasses.Person2>(props, settersOnly = true)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person2>(props, settersOnly = true)
 
-            // A constructor with all the params exists
+            // All properties have been set with setters
             assertEquals("testName", result?.name)
             assertEquals("testSurname", result?.surname)
             assertEquals(10, result?.age)
             assertEquals(true, result?.sex)
-
-            // This property has been set using the setters
             assertEquals("Jr", result?.middleName)
 
             // This property couldn't be set because it is a val, so it doesn't have setters
@@ -440,8 +456,14 @@ internal class ObjectBuilderTests {
         }
 
         @Test
-        fun `find no args constructor, and set the properties with setters only - Test constructor 3`() {
-            // Try to find a constructor only with all the params
+        fun `update a base class instead of building a new object - Test constructor 3`() {
+            val baseClass = BuildWSettersTestClasses.Person3(
+                name = "testName",
+                surname = "testSurname",
+                age = 5,
+                sex = false,
+            ).apply { constructorUsed = 0 } // Change the constructor used property back to 0
+
             val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person3::class.memberProperties
                 .associate {
                     when(it.name) {
@@ -451,7 +473,67 @@ internal class ObjectBuilderTests {
                     }
                 }
 
-            val result = objectBuilder.build<BuildWSettersTestClasses.Person3>(props)
+            val result = objectBuilder.buildOrUpdate(props, baseClass = baseClass)
+
+            // Since the class was not built again the constructor used is still 0
+            assertEquals(0, result?.constructorUsed)
+
+            assertEquals("testName", result?.name)
+            assertEquals("testSurname", result?.surname)
+            assertEquals(5, result?.age)
+            assertEquals(false, result?.sex)
+
+            // Only this property was set, since the other ones were already set in the base class
+            assertEquals("Jr", result?.middleName)
+
+            // This property couldn't be set because it is a val, so it doesn't have setters
+            assertEquals("defaultAddress", result?.address)
+        }
+
+        @Test
+        fun `find no args constructor with less unneeded amount of optional or nullable parameters - Test constructor 3`() {
+            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person3::class.memberProperties
+                .associate {
+                    when(it.name) {
+                        "name" -> it to "testName"
+                        "surname" -> it to "testSurname"
+                        "age" -> it to 10
+                        "sex" -> it to true
+                        "middleName" -> it to "Jr"
+                        "address" -> it to "testAddress"
+                        else -> it to null
+                    }
+                }
+
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person3>(props, settersOnly = true)
+
+            // The constructor 2 is used since it has the least unneeded amount of optional and nullable params
+            assertEquals(2, result?.constructorUsed)
+
+            // All properties have been set with setters
+            assertEquals("testName", result?.name)
+            assertEquals("testSurname", result?.surname)
+            assertEquals(10, result?.age)
+            assertEquals(true, result?.sex)
+            assertEquals("Jr", result?.middleName)
+
+            // This property couldn't be set because it is a val, so it doesn't have setters
+            assertEquals("defaultAddress", result?.address)
+        }
+
+        @Test
+        fun `find no args constructor, and set the properties with setters only - Test constructor 4`() {
+            // Try to find a constructor only with all the params
+            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person4::class.memberProperties
+                .associate {
+                    when(it.name) {
+                        "middleName" -> it to "Jr"
+                        "address" -> it to "testAddress"
+                        else -> it to null
+                    }
+                }
+
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person4>(props)
 
             // A no args constructor exists
             // This property has been set using the setters
@@ -462,9 +544,9 @@ internal class ObjectBuilderTests {
         }
 
         @Test
-        fun `set a property to null with setters - Test constructor 3`() {
+        fun `set a property to null with setters - Test constructor 4`() {
             // Try to find a constructor only with all the params
-            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person3::class.memberProperties
+            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person4::class.memberProperties
                 .associate {
                     when(it.name) {
                         "middleName" -> it to null
@@ -473,7 +555,7 @@ internal class ObjectBuilderTests {
                     }
                 }
 
-            val result = objectBuilder.build<BuildWSettersTestClasses.Person3>(props)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person4>(props)
 
             // A no args constructor exists
             // This property has been set using the setters
@@ -484,9 +566,9 @@ internal class ObjectBuilderTests {
         }
 
         @Test
-        fun `try to set a non-nullable property to null with setters - Test constructor 4`() {
+        fun `try to set a non-nullable property to null with setters - Test constructor 5`() {
             // Try to find a constructor only with all the params
-            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person3::class.memberProperties
+            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person5::class.memberProperties
                 .associate {
                     when(it.name) {
                         "middleName" -> it to null
@@ -495,7 +577,7 @@ internal class ObjectBuilderTests {
                     }
                 }
 
-            val result = objectBuilder.build<BuildWSettersTestClasses.Person3>(props)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person5>(props)
 
             // A no args constructor exists
             // This property has not been set using the setters, because it's non-nullable
@@ -506,9 +588,9 @@ internal class ObjectBuilderTests {
         }
 
         @Test
-        fun `try to set a property with the wrong type with setters - Test constructor 4`() {
+        fun `try to set a property with the wrong type with setters - Test constructor 5`() {
             // Try to find a constructor only with all the params
-            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person4::class.memberProperties
+            val props: Map<KProperty<*>, Any?> = BuildWSettersTestClasses.Person5::class.memberProperties
                 .associate {
                     when(it.name) {
                         "middleName" -> it to 5
@@ -517,7 +599,7 @@ internal class ObjectBuilderTests {
                     }
                 }
 
-            val result = objectBuilder.build<BuildWSettersTestClasses.Person4>(props)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person5>(props)
 
             // A no args constructor exists
             // This property has not been set using the setters, the value was ignored since it had a wrong type
