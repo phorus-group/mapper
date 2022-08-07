@@ -5,6 +5,7 @@ import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.memberProperties
 
 typealias Value = Any
 
@@ -26,24 +27,33 @@ class ObjectBuilder {
      * @return the built or updated class, or null
      */
     inline fun <reified T: Any> buildOrUpdate(
-        properties: Map<KProperty<*>, Value?>,
+        properties: Map<String, Value?>,
         settersOnly: Boolean = false,
         baseClass: T? = null,
     ): T? {
 
+        // Build a new object only if base class is null
         val (builtObject, unsetProperties) = if (baseClass == null) {
-            buildWithConstructor<T>(
-                if (settersOnly) emptyMap() else properties.map { it.key.name to it.value }.associate { it }
-            )
+            // If settersOnly is true, don't set any property through a constructor and treat all property as an unset
+            if (settersOnly) {
+                buildWithConstructor<T>().first to properties.keys
+            } else {
+                buildWithConstructor(properties)
+            }
         } else {
-            baseClass to emptyList()
+            // If base class is present, then use it and treat all properties as an unset
+            baseClass to properties.keys
         }
+
+        // Get class KProperties
+        val kProperties = T::class.memberProperties
+            .filter { it.name in unsetProperties } // Only include unset properties
+            .associateWith { properties[it.name] } // Get the properties desired value
 
         if (builtObject == null)
             return null
 
-        properties
-            .filter { if (settersOnly || baseClass != null) true else it.key.name in unsetProperties }
+        kProperties
             .forEach { prop ->
                 val property = prop.key
 
