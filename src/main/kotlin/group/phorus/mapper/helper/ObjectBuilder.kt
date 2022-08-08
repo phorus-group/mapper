@@ -3,11 +3,8 @@ package group.phorus.mapper.helper
 import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KParameter
-import kotlin.reflect.KProperty
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
-
-typealias Value = Any
 
 class ObjectBuilder {
 
