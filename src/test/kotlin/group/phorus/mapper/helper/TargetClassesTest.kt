@@ -9,21 +9,21 @@ import kotlin.test.assertEquals
 
 internal class TargetClassesTest {
 
+    data class Pet(
+        @field:MapFrom(["../name"], MappingFallback.NULL)
+        val petName: String,
+        val petAge: Int,
+        val breed: String?
+    )
+
+    data class Person(
+        val name: String,
+        val age: Int,
+        val pet: Pet,
+    )
+
     @Test
     fun `wrap class in TargetClass`() {
-        data class Pet(
-            @field:MapFrom(["../name"], MappingFallback.NULL)
-            val name: String,
-            val age: Int,
-            val breed: String?
-        )
-
-        data class Person(
-            val name: String,
-            val age: Int,
-            val pet: Pet,
-        )
-
         val result = targetClass<Person>()
 
         println(result)
@@ -48,12 +48,12 @@ internal class TargetClassesTest {
 
         assertEquals(3, petNode.properties.size)
 
-        assertEquals(typeOf<String>(), petNode.properties.single { it.name == "name" }.type)
-        assertEquals("../name", petNode.properties.single { it.name == "name" }.mapFrom?.locations?.first())
-        assertEquals(MappingFallback.NULL, petNode.properties.single { it.name == "name" }.mapFrom?.fallback)
+        assertEquals(typeOf<String>(), petNode.properties.single { it.name == "petName" }.type)
+        assertEquals("../name", petNode.properties.single { it.name == "petName" }.mapFrom?.locations?.first())
+        assertEquals(MappingFallback.NULL, petNode.properties.single { it.name == "petName" }.mapFrom?.fallback)
 
-        assertEquals(typeOf<Int>(), petNode.properties.single { it.name == "age" }.type)
-        assertNull(petNode.properties.single { it.name == "age" }.mapFrom)
+        assertEquals(typeOf<Int>(), petNode.properties.single { it.name == "petAge" }.type)
+        assertNull(petNode.properties.single { it.name == "petAge" }.mapFrom)
 
         assertEquals(typeOf<String?>(), petNode.properties.single { it.name == "breed" }.type)
         assertNull(petNode.properties.single { it.name == "breed" }.mapFrom)

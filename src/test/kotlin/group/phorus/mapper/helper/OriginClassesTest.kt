@@ -7,29 +7,30 @@ import kotlin.test.assertEquals
 
 internal class OriginClassesTest {
 
+    data class Pet(
+        val petName: String,
+        val petAge: Int,
+        val breed: String?
+    )
+
+    data class Person(
+        val name: String,
+        val age: Int,
+        val pet: Pet,
+    )
+
+    val person = Person(
+        name = "testPersonName",
+        age = 22,
+        pet = Pet(
+            petName = "testPetName",
+            petAge = 3,
+            breed = null
+        )
+    )
+
     @Test
     fun `wrap object in OriginEntity`() {
-        data class Pet(
-            val name: String,
-            val age: Int,
-            val breed: String?
-        )
-
-        data class Person(
-            val name: String,
-            val age: Int,
-            val pet: Pet,
-        )
-
-        val person = Person(
-            name = "testPersonName",
-            age = 22,
-            pet = Pet(
-                name = "testPetName",
-                age = 3,
-                breed = null
-            )
-        )
 
         val result = OriginEntity(person)
 
@@ -54,13 +55,36 @@ internal class OriginClassesTest {
 
         assertEquals(3, petNode.properties.size)
 
-        assertEquals(typeOf<String>(), petNode.properties.single { it.name == "name" }.type)
-        assertEquals("testPetName", petNode.properties.single { it.name == "name" }.value)
+        assertEquals(typeOf<String>(), petNode.properties.single { it.name == "petName" }.type)
+        assertEquals("testPetName", petNode.properties.single { it.name == "petName" }.value)
 
-        assertEquals(typeOf<Int>(), petNode.properties.single { it.name == "age" }.type)
-        assertEquals(3, petNode.properties.single { it.name == "age" }.value)
+        assertEquals(typeOf<Int>(), petNode.properties.single { it.name == "petAge" }.type)
+        assertEquals(3, petNode.properties.single { it.name == "petAge" }.value)
 
         assertEquals(typeOf<String?>(), petNode.properties.single { it.name == "breed" }.type)
         assertNull(petNode.properties.single { it.name == "breed" }.value)
+    }
+
+    @Test
+    fun `wrap object in OriginEntity and validate bidirectional access`() {
+        val result = OriginEntity(person)
+
+        // Get the parent class of the name field = Person
+        assertEquals(person, result.properties.single { it.name == "name" }.parent.value)
+
+        // Get the pet node
+        val petNode = result.properties.single { it.name == "pet" }
+
+        // Get the parent class of the breed field in the pet node = Pet
+        assertEquals(person.pet, petNode.properties.single { it.name == "breed" }.parent.value)
+
+        // Get the parent class (Person) of the parent class (Pet) of the breed field in the pet node = Person
+        assertEquals(person, petNode.properties.single { it.name == "breed" }.parent.parent?.value)
+
+        // Get the person node
+        val personNode = petNode.properties.single { it.name == "breed" }.parent.parent
+
+        // Get the parent class (Pet) of the parent class (Person) of the pet field in the person node = Pet
+        assertEquals(person.pet, personNode!!.properties.single { it.name == "pet" }.properties.single { it.name == "breed" }.parent.value)
     }
 }
