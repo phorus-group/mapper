@@ -39,6 +39,10 @@ internal class OriginClassesTest {
         assertEquals(typeOf<String>(), result.properties.single { it.name == "name" }.type)
         assertEquals("testPersonName", result.properties.single { it.name == "name" }.value)
 
+        // String classes also have a length property that the mapper can use
+        assertEquals(typeOf<Int>(), result.properties.single { it.name == "name" }.properties.single { it.name == "length" }.type)
+        assertEquals("testPersonName".length, result.properties.single { it.name == "name" }.properties.single { it.name == "length" }.value)
+
         assertEquals(typeOf<Int>(), result.properties.single { it.name == "age" }.type)
         assertEquals(22, result.properties.single { it.name == "age" }.value)
 

@@ -34,6 +34,9 @@ internal class TargetClassesTest {
         assertEquals(typeOf<String>(), result.properties.single { it.name == "name" }.type)
         assertNull(result.properties.single { it.name == "name" }.mapFrom)
 
+        // String classes also have a length property that the mapper can use
+        assertEquals(typeOf<Int>(), result.properties.single { it.name == "name" }.properties.single { it.name == "length" }.type)
+
         assertEquals(typeOf<Int>(), result.properties.single { it.name == "age" }.type)
         assertNull(result.properties.single { it.name == "age" }.mapFrom)
 
