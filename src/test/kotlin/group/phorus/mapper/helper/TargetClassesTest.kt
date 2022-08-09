@@ -31,31 +31,31 @@ internal class TargetClassesTest {
         // Person asserts
         assertEquals(3, result.properties.size)
 
-        assertEquals(typeOf<String>(), result.properties.single { it.name == "name" }.type)
-        assertNull(result.properties.single { it.name == "name" }.mapFrom)
+        assertEquals(typeOf<String>(), result.properties["name"]?.type)
+        assertNull(result.properties["name"]?.mapFrom)
 
         // String classes also have a length property that the mapper can use
-        assertEquals(typeOf<Int>(), result.properties.single { it.name == "name" }.properties.single { it.name == "length" }.type)
+        assertEquals(typeOf<Int>(), result.properties["name"]?.properties?.get("length")?.type)
 
-        assertEquals(typeOf<Int>(), result.properties.single { it.name == "age" }.type)
-        assertNull(result.properties.single { it.name == "age" }.mapFrom)
+        assertEquals(typeOf<Int>(), result.properties["age"]?.type)
+        assertNull(result.properties["age"]?.mapFrom)
 
         // Pet asserts
-        assertEquals(typeOf<Pet>(), result.properties.single { it.name == "pet" }.type)
-        assertNull(result.properties.single { it.name == "pet" }.mapFrom)
+        assertEquals(typeOf<Pet>(), result.properties["pet"]?.type)
+        assertNull(result.properties["pet"]?.mapFrom)
 
-        val petNode = result.properties.single { it.name == "pet" }
+        val petNode = result.properties["pet"]
 
-        assertEquals(3, petNode.properties.size)
+        assertEquals(3, petNode?.properties?.size)
 
-        assertEquals(typeOf<String>(), petNode.properties.single { it.name == "petName" }.type)
-        assertEquals("../name", petNode.properties.single { it.name == "petName" }.mapFrom?.locations?.first())
-        assertEquals(MappingFallback.NULL, petNode.properties.single { it.name == "petName" }.mapFrom?.fallback)
+        assertEquals(typeOf<String>(), petNode?.properties?.get("petName")?.type)
+        assertEquals("../name", petNode?.properties?.get("petName")?.mapFrom?.locations?.first())
+        assertEquals(MappingFallback.NULL, petNode?.properties?.get("petName")?.mapFrom?.fallback)
 
-        assertEquals(typeOf<Int>(), petNode.properties.single { it.name == "petAge" }.type)
-        assertNull(petNode.properties.single { it.name == "petAge" }.mapFrom)
+        assertEquals(typeOf<Int>(), petNode?.properties?.get("petAge")?.type)
+        assertNull(petNode?.properties?.get("petAge")?.mapFrom)
 
-        assertEquals(typeOf<String?>(), petNode.properties.single { it.name == "breed" }.type)
-        assertNull(petNode.properties.single { it.name == "breed" }.mapFrom)
+        assertEquals(typeOf<String?>(), petNode?.properties?.get("breed")?.type)
+        assertNull(petNode?.properties?.get("breed")?.mapFrom)
     }
 }

@@ -17,9 +17,7 @@ class TargetClass<T: Any>(clazz: KClass<T>) {
     /**
      * Class properties
      */
-    val properties: List<TargetNode<*>> = clazz.memberProperties.map { TargetNode(it) }
-
-    override fun toString(): String = "$properties"
+    val properties: Map<String, TargetNode<*>> = clazz.memberProperties.associate { it.name to TargetNode(it) }
 }
 
 /**
@@ -32,9 +30,8 @@ inline fun <reified T: Any> targetClass() = TargetClass(T::class)
  * @param T property type
  * @param property property
  */
-class TargetNode<T>(val property: KProperty<T>) {
+class TargetNode<T>(property: KProperty<T>) {
 
-    val name: String by lazy { property.name }
     val type: KType by lazy { property.returnType }
 
     /**
@@ -46,9 +43,7 @@ class TargetNode<T>(val property: KProperty<T>) {
     /**
      * Class sub properties
      */
-    val properties: List<TargetNode<*>> by lazy { (type.classifier as KClass<*>).memberProperties.map { TargetNode(it) } }
-
-    override fun toString(): String = "{ \"name\": \"$name\", \"type\": \"$type\"" +
-            ", \"mapFrom\": \"${mapFrom.toString().replace("\"", "'")}\"" +
-            "${if (properties.isEmpty()) "" else ", \"properties\": [ $properties ]"}}"
+    val properties: Map<String, TargetNode<*>> by lazy {
+        (type.classifier as KClass<*>).memberProperties.associate { it.name to TargetNode(it) }
+    }
 }

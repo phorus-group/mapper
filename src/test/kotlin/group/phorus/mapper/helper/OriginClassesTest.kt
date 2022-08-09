@@ -19,7 +19,7 @@ internal class OriginClassesTest {
         val pet: Pet,
     )
 
-    val person = Person(
+    private val person = Person(
         name = "testPersonName",
         age = 22,
         pet = Pet(
@@ -37,32 +37,32 @@ internal class OriginClassesTest {
         // Person asserts
         assertEquals(3, result.properties.size)
 
-        assertEquals(typeOf<String>(), result.properties.single { it.name == "name" }.type)
-        assertEquals("testPersonName", result.properties.single { it.name == "name" }.value)
+        assertEquals(typeOf<String>(), result.properties["name"]?.type)
+        assertEquals("testPersonName", result.properties["name"]?.value)
 
         // String classes also have a length property that the mapper can use
-        assertEquals(typeOf<Int>(), result.properties.single { it.name == "name" }.properties.single { it.name == "length" }.type)
-        assertEquals("testPersonName".length, result.properties.single { it.name == "name" }.properties.single { it.name == "length" }.value)
+        assertEquals(typeOf<Int>(), result.properties["name"]?.properties?.get("length")?.type)
+        assertEquals("testPersonName".length, result.properties["name"]?.properties?.get("length")?.value)
 
-        assertEquals(typeOf<Int>(), result.properties.single { it.name == "age" }.type)
-        assertEquals(22, result.properties.single { it.name == "age" }.value)
+        assertEquals(typeOf<Int>(), result.properties["age"]?.type)
+        assertEquals(22, result.properties["age"]?.value)
 
         // Pet asserts
-        assertEquals(typeOf<Pet>(), result.properties.single { it.name == "pet" }.type)
-        assertEquals(person.pet, result.properties.single { it.name == "pet" }.value)
+        assertEquals(typeOf<Pet>(), result.properties["pet"]?.type)
+        assertEquals(person.pet, result.properties["pet"]?.value)
 
-        val petNode = result.properties.single { it.name == "pet" }
+        val petNode = result.properties["pet"]
 
-        assertEquals(3, petNode.properties.size)
+        assertEquals(3, petNode?.properties?.size)
 
-        assertEquals(typeOf<String>(), petNode.properties.single { it.name == "petName" }.type)
-        assertEquals("testPetName", petNode.properties.single { it.name == "petName" }.value)
+        assertEquals(typeOf<String>(), petNode?.properties?.get("petName")?.type)
+        assertEquals("testPetName", petNode?.properties?.get("petName")?.value)
 
-        assertEquals(typeOf<Int>(), petNode.properties.single { it.name == "petAge" }.type)
-        assertEquals(3, petNode.properties.single { it.name == "petAge" }.value)
+        assertEquals(typeOf<Int>(), petNode?.properties?.get("petAge")?.type)
+        assertEquals(3, petNode?.properties?.get("petAge")?.value)
 
-        assertEquals(typeOf<String?>(), petNode.properties.single { it.name == "breed" }.type)
-        assertNull(petNode.properties.single { it.name == "breed" }.value)
+        assertEquals(typeOf<String?>(), petNode?.properties?.get("breed")?.type)
+        assertNull(petNode?.properties?.get("breed")?.value)
     }
 
     @Test
@@ -70,21 +70,21 @@ internal class OriginClassesTest {
         val result = OriginEntity(person)
 
         // Get the parent class of the name field = Person
-        assertEquals(person, result.properties.single { it.name == "name" }.parent.value)
+        assertEquals(person, result.properties["name"]?.parent?.value)
 
         // Get the pet node
-        val petNode = result.properties.single { it.name == "pet" }
+        val petNode = result.properties["pet"]
 
         // Get the parent class of the breed field in the pet node = Pet
-        assertEquals(person.pet, petNode.properties.single { it.name == "breed" }.parent.value)
+        assertEquals(person.pet, petNode?.properties?.get("breed")?.parent?.value)
 
         // Get the parent class (Person) of the parent class (Pet) of the breed field in the pet node = Person
-        assertEquals(person, petNode.properties.single { it.name == "breed" }.parent.parent?.value)
+        assertEquals(person, petNode?.properties?.get("breed")?.parent?.parent?.value)
 
         // Get the person node
-        val personNode = petNode.properties.single { it.name == "breed" }.parent.parent
+        val personNode = petNode?.properties?.get("breed")?.parent?.parent
 
         // Get the parent class (Pet) of the parent class (Person) of the pet field in the person node = Pet
-        assertEquals(person.pet, personNode!!.properties.single { it.name == "pet" }.properties.single { it.name == "breed" }.parent.value)
+        assertEquals(person.pet, personNode!!.properties["pet"]?.properties?.get("breed")?.parent?.value)
     }
 }
