@@ -5,9 +5,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 
-internal class ObjectBuilderTests {
-    
-    val objectBuilder = ObjectBuilder()
+internal class ObjectBuilderTest {
 
     class BuildTestClasses {
 
@@ -70,7 +68,7 @@ internal class ObjectBuilderTests {
             // Try to find a constructor only with all the params
             val props = emptyMap<String, String>()
 
-            val result = objectBuilder.buildWithConstructor<Pet>(props)
+            val result = buildWithConstructor<Pet>(props)
 
             // A no args constructor exists
             assertNotNull(result.first)
@@ -89,7 +87,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             assertEquals(1.0, result.first?.constructorUsed)
 
@@ -112,7 +110,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             assertEquals(2.0, result.first?.constructorUsed)
 
@@ -134,7 +132,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             // The function will use the constructor 3, and not the 6 and 7 because they have more unneeded params
             assertEquals(3.0, result.first?.constructorUsed)
@@ -157,7 +155,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             // The function won't use the constructor 3, since specified value has the wrong type
             assertNull(result.first)
@@ -176,7 +174,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             // The function will use the constructor 3.2 instead of the 3 because of the value type
             assertEquals(3.2, result.first?.constructorUsed)
@@ -199,7 +197,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             assertEquals(4.0, result.first?.constructorUsed)
 
@@ -221,7 +219,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             assertEquals(5.0, result.first?.constructorUsed)
 
@@ -243,7 +241,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             // The function will use the constructor 6, because we are trying to explicitly set the "tmp" field to null
             assertEquals(6.0, result.first?.constructorUsed)
@@ -267,7 +265,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             // The function will find the constructor 8, but we are trying to explicitly set the "test" field to
             //  null and the field is not nullable. In this case the function will take the constructor into account but
@@ -294,7 +292,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
+            val result = buildWithConstructor<BuildTestClasses.Person>(props)
 
             // A constructor only with the "age" param doesn't exist
             assertNull(result.first)
@@ -322,7 +320,7 @@ internal class ObjectBuilderTests {
                 "middleName" to "Jr",
             )
 
-            val result = objectBuilder.buildWithConstructor<PersonNoArgs>(props)
+            val result = buildWithConstructor<PersonNoArgs>(props)
 
             // A no args constructor exists
             assertNotNull(result.first)
@@ -407,7 +405,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person>(props)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person>(props)
 
             // A constructor with all the params exists
             assertEquals("testName", result?.name)
@@ -433,7 +431,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person2>(props, useSettersOnly = true)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person2>(props, useSettersOnly = true)
 
             // All properties have been set with setters
             assertEquals("testName", result?.name)
@@ -460,7 +458,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate(props, baseClass = baseClass)
+            val result = buildOrUpdate(props, baseClass = baseClass)
 
             // Since the class was not built again the constructor used is still 0
             assertEquals(0, result?.constructorUsed)
@@ -488,7 +486,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person3>(props, useSettersOnly = true)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person3>(props, useSettersOnly = true)
 
             // The constructor 2 is used since it has the least unneeded amount of optional and nullable params
             assertEquals(2, result?.constructorUsed)
@@ -512,7 +510,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person4>(props)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person4>(props)
 
             // A no args constructor exists
             // This property has been set using the setters
@@ -530,7 +528,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person4>(props)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person4>(props)
 
             // A no args constructor exists
             // This property has been set using the setters
@@ -548,7 +546,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person5>(props)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person5>(props)
 
             // A no args constructor exists
             // This property has not been set using the setters, because it's non-nullable
@@ -566,7 +564,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person5>(props)
+            val result = buildOrUpdate<BuildWSettersTestClasses.Person5>(props)
 
             // A no args constructor exists
             // This property has not been set using the setters, the value was ignored since it had a wrong type
