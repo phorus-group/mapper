@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 internal class OriginClassesTest {
 
@@ -86,5 +87,17 @@ internal class OriginClassesTest {
 
         // Get the parent class (Pet) of the parent class (Person) of the pet field in the person node = Pet
         assertEquals(person.pet, personNode!!.properties["pet"]?.properties?.get("breed")?.parent?.value)
+    }
+
+    @Test
+    fun `find property`() {
+        val location = listOf("pet", "petName")
+
+        val result = OriginEntity(person).findProperty(location)
+
+        assertNotNull(result)
+
+        assertEquals(typeOf<String>(), result.type)
+        assertEquals("testPetName", result.value)
     }
 }

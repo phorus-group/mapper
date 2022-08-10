@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 internal class TargetClassesTest {
 
@@ -57,5 +58,16 @@ internal class TargetClassesTest {
 
         assertEquals(typeOf<String?>(), petNode?.properties?.get("breed")?.type)
         assertNull(petNode?.properties?.get("breed")?.mapFrom)
+    }
+
+    @Test
+    fun `find property`() {
+        val location = listOf("pet", "petName")
+
+        val result = targetClass<Person>().findProperty(location)
+
+        assertNotNull(result)
+
+        assertEquals(typeOf<String>(), result.type)
     }
 }
