@@ -19,20 +19,20 @@ class ObjectBuilder {
      *
      * @param T type of the class to build
      * @param properties to set with their value
-     * @param settersOnly option to use setters only, not needed if a baseClass is used
+     * @param useSettersOnly option to use setters only, not needed if a baseClass is used
      * @param baseClass if specified, the class will be updated using setters instead of creating a new one
      * @return the built or updated class, or null
      */
     inline fun <reified T: Any> buildOrUpdate(
         properties: Map<String, Value?>,
-        settersOnly: Boolean = false,
+        useSettersOnly: Boolean = false,
         baseClass: T? = null,
     ): T? {
 
         // Build a new object only if base class is null
         val (builtObject, unsetProperties) = if (baseClass == null) {
             // If settersOnly is true, don't set any property through a constructor and treat all property as an unset
-            if (settersOnly) {
+            if (useSettersOnly) {
                 buildWithConstructor<T>().first to properties.keys
             } else {
                 buildWithConstructor(properties)
@@ -142,8 +142,13 @@ class ObjectBuilder {
                         return@nextConstructor
 
                     // If the param is nullable, save the property and its null value
-                    if (param.type.isMarkedNullable)
+                    if (param.type.isMarkedNullable) {
                         params[param] = PropertyWrapper(prop.value)
+                    } else {
+                        // If the param is not nullable, but it's optional, then we are not going to use the null value
+                        //  at all, so we should increase the unneededParams count
+                        unneededParams++
+                    }
                 } else {
                     // Save the property and its value if the param and prop have the same types
                     val propValueType = prop.value!!::class.qualifiedName

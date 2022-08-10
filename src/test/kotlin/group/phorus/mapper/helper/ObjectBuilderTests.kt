@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
-import kotlin.reflect.KProperty
-import kotlin.reflect.full.*
 
 internal class ObjectBuilderTests {
     
@@ -261,7 +259,7 @@ internal class ObjectBuilderTests {
         }
 
         @Test
-        fun `try to set a non-nullable property as null explicitly - Test constructor 8`() {
+        fun `try to set a non-nullable property as null explicitly - Test constructor 6`() {
             val props = mapOf(
                 "name" to "testName",
                 "tmp" to "tmpTest",
@@ -271,10 +269,11 @@ internal class ObjectBuilderTests {
 
             val result = objectBuilder.buildWithConstructor<BuildTestClasses.Person>(props)
 
-            // The function will use the constructor 8, because we are trying to explicitly set the "test" field to
-            //  null, but the field is not nullable, luckily the field is optional so the constructor
-            //  can be used anyway
-            assertEquals(8.0, result.first?.constructorUsed)
+            // The function will find the constructor 8, but we are trying to explicitly set the "test" field to
+            //  null and the field is not nullable. In this case the function will take the constructor into account but
+            //  will also consider this parameter as unneeded, and will try to find a constructor without it
+            // That's why it should find the constructor 6
+            assertEquals(6.0, result.first?.constructorUsed)
 
             assertEquals("testName", result.first?.name)
             assertEquals("defaultSurname", result.first?.surname)
@@ -434,7 +433,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person2>(props, settersOnly = true)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person2>(props, useSettersOnly = true)
 
             // All properties have been set with setters
             assertEquals("testName", result?.name)
@@ -489,7 +488,7 @@ internal class ObjectBuilderTests {
                 "address" to "testAddress",
             )
 
-            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person3>(props, settersOnly = true)
+            val result = objectBuilder.buildOrUpdate<BuildWSettersTestClasses.Person3>(props, useSettersOnly = true)
 
             // The constructor 2 is used since it has the least unneeded amount of optional and nullable params
             assertEquals(2, result?.constructorUsed)
