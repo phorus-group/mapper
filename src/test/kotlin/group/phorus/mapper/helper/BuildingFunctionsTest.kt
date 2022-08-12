@@ -458,7 +458,7 @@ internal class BuildingFunctionsTest {
                 "address" to "testAddress",
             )
 
-            val result = buildOrUpdate(props, baseClass = baseClass)
+            val result = buildOrUpdate(props, baseEntity = baseClass)
 
             // Since the class was not built again the constructor used is still 0
             assertEquals(0, result?.constructorUsed)

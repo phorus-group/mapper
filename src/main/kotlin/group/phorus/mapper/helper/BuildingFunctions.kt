@@ -1,12 +1,24 @@
 package group.phorus.mapper.helper
 
-import kotlin.reflect.KFunction
-import kotlin.reflect.KMutableProperty
-import kotlin.reflect.KParameter
+import kotlin.reflect.*
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
 
 data class PropertyWrapper<T>(val value: T)
+
+/**
+ * Reified version of the buildOrUpdate method.
+ */
+inline fun <reified T: Any> buildOrUpdate(
+    properties: Map<String, Value?>,
+    useSettersOnly: Boolean = false,
+    baseEntity: T? = null,
+): T? = buildOrUpdate(
+    type = typeOf<T>(),
+    properties = properties,
+    useSettersOnly = useSettersOnly,
+    baseEntity = baseEntity,
+) as T?
 
 /**
  * Builds an object and sets its properties using a constructor
@@ -15,33 +27,34 @@ data class PropertyWrapper<T>(val value: T)
  * This function doesn't do mapping, the property value must be mapped beforehand, if the value type and the
  *  parameter type are different, then the value will be ignored
  *
- * @param T type of the class to build
+ * @param type of the class to build
  * @param properties to set with their value
  * @param useSettersOnly option to use setters only, not needed if a baseClass is used
- * @param baseClass if specified, the class will be updated using setters instead of creating a new one
- * @return the built or updated class, or null
+ * @param baseEntity if specified, the entity will be updated using setters instead of creating a new one
+ * @return the built or updated entity, or null
  */
-inline fun <reified T: Any> buildOrUpdate(
+fun buildOrUpdate(
+    type: KType,
     properties: Map<String, Value?>,
     useSettersOnly: Boolean = false,
-    baseClass: T? = null,
-): T? {
+    baseEntity: Any? = null,
+): Any? {
 
     // Build a new object only if base class is null
-    val (builtObject, unsetProperties) = if (baseClass == null) {
+    val (builtObject, unsetProperties) = if (baseEntity == null) {
         // If settersOnly is true, don't set any property through a constructor and treat all property as an unset
         if (useSettersOnly) {
-            buildWithConstructor<T>().first to properties.keys
+            buildWithConstructor(type).first to properties.keys
         } else {
-            buildWithConstructor(properties)
+            buildWithConstructor(type, properties)
         }
     } else {
         // If base class is present, then use it and treat all properties as an unset
-        baseClass to properties.keys
+        baseEntity to properties.keys
     }
 
     // Get class KProperties
-    val kProperties = T::class.memberProperties
+    val kProperties = (type.classifier as KClass<*>).memberProperties
         .filter { it.name in unsetProperties } // Only include unset properties
         .associateWith { properties[it.name] } // Get the properties desired value
 
@@ -78,17 +91,48 @@ inline fun <reified T: Any> buildOrUpdate(
 }
 
 /**
- * Tries to create an object T setting as many parameters as possible with the constructor
- * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
- *  are different, then the value will be ignored
+ * Creates a new entity based on another already existing one, useful when you want to use a base entity, but you don't
+ *  want to be forced to only use setters for every property
  *
- * @param T type of the class to build
- * @param properties properties to use in the object constructor with their value
- * @return the built object and the properties that couldn't be set with the constructor
+ * @param type of the class to build
+ * @param properties to set with their value
+ * @param useSettersOnly option to use setters only, not needed if a baseClass is used
+ * @param baseEntity the entity to build the new one from
+ * @return the built entity, or null
+ */
+fun buildWithBaseEntity(
+    type: KType,
+    properties: Map<String, Value?>,
+    baseEntity: Any,
+): Any? = buildOrUpdate(
+    type = type,
+    properties = OriginalEntity(baseEntity, type).properties.map { it.key to it.value.value }.toMap() + properties,
+    useSettersOnly = false,
+)
+
+/**
+ * Reified version of the buildWithConstructor method.
  */
 inline fun <reified T: Any> buildWithConstructor(
     properties: Map<String, Value?> = emptyMap(),
-): Pair<T?, List<String>> {
+): Pair<T?, List<String>> = buildWithConstructor(
+    type = typeOf<T>(),
+    properties = properties,
+) as Pair<T?, List<String>>
+
+/**
+ * Tries to create an object setting as many parameters as possible with the constructor
+ * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
+ *  are different, then the value will be ignored
+ *
+ * @param type type of the class to build
+ * @param properties properties to use in the object constructor with their value
+ * @return the built object and the properties that couldn't be set with the constructor
+ */
+fun buildWithConstructor(
+    type: KType,
+    properties: Map<String, Value?> = emptyMap(),
+): Pair<Any?, List<String>> {
 
     // Place to save the constructor params and the matched properties and values, or the optional or nullable
     //  constructor params
@@ -99,10 +143,10 @@ inline fun <reified T: Any> buildWithConstructor(
     var constructorUnneededParams = Integer.MAX_VALUE
 
     // Chosen constructor, take the first one by default
-    var constructor: KFunction<T>? = null
+    var constructor: KFunction<Any>? = null
 
     // Iterate through all the constructors
-    T::class.constructors.forEach nextConstructor@ { constr ->
+    (type.classifier as KClass<*>).constructors.forEach nextConstructor@ { constr ->
 
         // Place to save the constructor params and the matched properties and values
         val params = mutableMapOf<KParameter, PropertyWrapper<Value?>?>()
@@ -179,9 +223,9 @@ inline fun <reified T: Any> buildWithConstructor(
     constructorParams = constructorParams.filter { it.value != null || !it.key.isOptional }
 
     // Create the object using the saved constructor and matched params
-    val builtObject: T? = try {
+    val builtObject = try {
         val args = constructorParams.map { it.key to it.value?.value }.associate { it }
-        constructor?.callBy(args) ?: T::class.createInstance()
+        constructor?.callBy(args) ?: (type.classifier as KClass<*>).createInstance()
     } catch (e: Exception) {
         // If the constructor is null because the object doesn't have one, and the createInstance() fails because
         //  the object doesn't have a no args constructor, return a null object

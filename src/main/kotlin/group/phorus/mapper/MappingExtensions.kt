@@ -1,14 +1,9 @@
 package group.phorus.mapper
 
-import group.phorus.mapper.enums.MappingReturnCodes
+import group.phorus.mapper.enums.MappingFallback
 import group.phorus.mapper.helper.*
-import kotlin.reflect.KClass
-import kotlin.reflect.KMutableProperty
-import kotlin.reflect.KProperty
-import kotlin.reflect.full.createInstance
-import kotlin.reflect.full.isSuperclassOf
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.jvmErasure
+import kotlin.reflect.*
+import kotlin.reflect.full.*
 
 
 /**
@@ -24,167 +19,214 @@ import kotlin.reflect.jvm.jvmErasure
  * 7- Hacer que la recursividad del mapTo sea llamando a un metodo interno que devuelva un map de referencias
  *      Map<String, KMutableProperty<*>>, de forma tal que todos los mapeos se pueda hacer al final de la primera ejecucion
  *
- *
+ * 8- Crear test que valide un mapFrom dede un map keys y/o un map values a un list
+ * 9- Puede que agregar tambien un parametro functions que acepte un Map<String, (source: Any) -> Any>
+ * 10- Agregar variaciones del metodo mapTo simplificadas en la parte de mappings y functionmappings para utilizar
+ *      el Fallback continue por defualt
  */
 
-inline fun <T : Any, reified A, reified B> Any.mapTo(
-    entityClass: KClass<out T>? = null,
-    exclusions: List<String>? = null,
-    mappings: Map<String, String>? = null,
-    customMappings: Map<String, Pair<(source: A) -> B, String>>? = null,
-    baseObject: T? = null,
-): T? {
-    val entity: T
-    try {
-        entity = baseObject ?: (entityClass?.createInstance() ?: return null)
-        if (entity is String) return null
-    } catch (e: Exception) {
-        return null
-    }
+inline fun <reified T: Any> Any.mapTo(
+    exclusions: List<TargetField> = emptyList(),
+    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
+    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
+    ignoreMapFromAnnotations: Boolean = false,
+    useSettersOnly: Boolean = false,
+): T? = mapTo(
+    originalEntity = OriginalEntity(this, this::class.starProjectedType /* TODO: Check that doesn't cause problems*/),
+    targetType = typeOf<T>(),
+    exclusions = exclusions,
+    mappings = mappings,
+    functionMappings = functionMappings,
+    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+    useSettersOnly = useSettersOnly,
+) as T?
 
-    entity::class.memberProperties.forEach { prop ->
+/**
+ *
+ *
+ * @param targetType target class type
+ * @param exclusions list of original class field exclusions. Excludes any mapping using
+ *  specifically any of the specified original fields.
+ */
+fun mapTo(
+    originalEntity: OriginNodeInterface<*>,
+    targetType: KType,
+    baseObject: Any? = null,
+    exclusions: List<TargetField> = emptyList(),
+    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
+    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
+    ignoreMapFromAnnotations: Boolean = false,
+    useSettersOnly: Boolean = false,
+): Any? {
+    // Format the exclusion locations
+    val fieldExclusions = exclusions.map { parseLocation(it).joinToString("/") }
 
-        if (prop !is KMutableProperty<*>)
+    // TODO: use the KType to validate: typeOf<Collection<*>>().isSuperTypeOf(kType), the same for Map and for Pair and Triple
+    val targetClass = TargetClass(targetType.classifier as KClass<*>)
+    val baseEntity = baseObject?.let { OriginalEntity(it, targetType) }
+
+    // Map all the mappings
+    val mappingValues = processMappings(
+        originalEntity= originalEntity,
+        targetClass = targetClass,
+        mappings = mappings.map {
+            it.key to (null to (it.value.first to it.value.second.toProcessMappingFallback()))
+        }.toMap(),
+        exclusions = fieldExclusions,
+    )
+
+    // Map all the functionMappings
+    val functionMappingValues = processMappings(
+        originalEntity= originalEntity,
+        targetClass = targetClass,
+        mappings = functionMappings.map {
+            it.key to (it.value.first to (it.value.second.first to it.value.second.second.toProcessMappingFallback()))
+        }.toMap(),
+        exclusions = fieldExclusions,
+    )
+
+    // Sum all the mapped values, if a key exists is repeated then the rightmost map
+    //  will have priority over the other. Priorities: functionMappings > mappings
+    val mappedValues = mappingValues + functionMappingValues
+
+    val props = mutableMapOf<TargetField, Value?>()
+
+    // Iterate through all the target class fields
+    targetClass.properties.forEach { targetField ->
+        val targetFieldName = targetField.key
+
+        // If the target field is in the target field exclusions list, skip
+        if (targetFieldName in fieldExclusions)
             return@forEach
 
-        handleMapFromAnnotation(prop, this, entity, exclusions, mappings, customMappings)
-            .also { if (it) return@forEach }
-
-        javaClass.kotlin.memberProperties.forEach targetLoop@{
-            if (exclusions?.contains(prop.name) == true) return@forEach
-            val originalProp: Any
-            try {
-                originalProp = it.get(this) ?: return@targetLoop
-            } catch (e: Exception) {
-                return null
-            }
-
-            // If the value is mapped through custom mappings, ignore the normal mapping
-            var newValue = getNewValueCustomMappings(prop, it, customMappings, originalProp)
-                ?: getNewValue(prop, it, mappings, originalProp)
-
-            if (newValue == MappingReturnCodes.CUSTOM_MAPPING)
-                return@targetLoop
-
-            if (newValue == MappingReturnCodes.NORMAL_MAPPING)
-                newValue = getNewValue(prop, it, mappings, originalProp)
-
-
-            newValue?.let { value ->
-                prop.setter.call(entity, value)
-                return@forEach
-            }
-        }
-    }
-
-    return entity
-}
-
-fun <T : Any> Any.mapTo(
-    entityClass: KClass<out T>? = null,
-    exclusions: List<String>? = null,
-    mappings: Map<String, String>? = null,
-    baseObject: T? = null,
-): T? {
-    val entity: T
-    try {
-        entity = baseObject ?: (entityClass?.createInstance() ?: return null)
-        if (entity is String) return null
-    } catch (e: Exception) {
-        return null
-    }
-
-    entity::class.memberProperties.forEach { prop ->
-
-        if (prop !is KMutableProperty<*>)
-            return@forEach
-
-        handleMapFromAnnotation(prop, this, entity, exclusions, mappings)
-            .also { if (it) return@forEach }
-
-        javaClass.kotlin.memberProperties.forEach targetLoop@{
-            if (exclusions?.contains(prop.name) == true) return@forEach
-            val originalProp: Any
-            try {
-                originalProp = it.get(this) ?: return@targetLoop
-            } catch (e: Exception) {
-                return null
-            }
-
-            getNewValue(prop, it, mappings, originalProp)
-                ?.let { value ->
-                    prop.setter.call(entity, value)
-                    return@forEach
+        var prop: PropertyWrapper<Any?>? = null
+        if (mappedValues.containsKey(targetFieldName)) {
+            // If the target field has been mapped with a mapping or a function mapping, use that mapped value
+            prop = PropertyWrapper(mappedValues[targetFieldName])
+        } else if (targetField.value.mapFrom != null) {
+            // If the target field has a mapFrom annotation, use its value
+            val mapFromMappedValue = if (!ignoreMapFromAnnotations) {
+                var mapFromValue: OriginNodeInterface<*>? = null
+                for (location in targetField.value.mapFrom!!.locations) {
+                    val mapFromProp = originalEntity.findProperty(parseLocation(location))
+                    if (mapFromProp != null) {
+                        mapFromValue = mapFromProp
+                    }
                 }
+                mapFromValue
+            } else null
+
+            prop = if (mapFromMappedValue != null) {
+                if (mapFromMappedValue.value != null && targetField.value.type.isSupertypeOf(mapFromMappedValue.type)) {
+                    PropertyWrapper(mapFromMappedValue.value)
+                } else if (mapFromMappedValue.value != null) {
+                    PropertyWrapper(mapTo(originalEntity = mapFromMappedValue, targetType= targetField.value.type))
+                } else PropertyWrapper(null)
+            } else {
+                if (targetField.value.mapFrom!!.fallback == MappingFallback.NULL) {
+                    PropertyWrapper(null)
+                } else null
+            }
         }
-    }
 
-    return entity
-}
+        if (prop == null) {
+            var value: Any? = null
+            // If the target property wasn't excluded or mapped until this point, look for the value in the original entity
+            val originalProp = originalEntity.properties[targetFieldName]
+            // If there's no property with the same name in the original entity, skip
+                ?: return@forEach
 
+            if (originalProp.value != null) {
+                // If the target field is the same type or a supertype of the original property, use that property
+                value = if (targetField.value.type.isSupertypeOf(originalProp.type)) {
+                    originalProp.value
+                } else {
+                    // If not, map it
+                    mapTo(originalEntity = originalProp, targetType= targetField.value.type)
+                }
+            }
 
-@PublishedApi
-internal fun getNewValue(
-    prop1: KProperty<*>,
-    prop2: KProperty<*>,
-    mappings: Map<String, String>?,
-    originalProp: Any,
-): Any? {
-    val (targetPropType, originalPropType) = getPropTypes(prop1, prop2)
-
-    // If the original property is present in mappings, return if the target prop is the one expected
-    if (mappings?.contains(prop2.name) == true) {
-        return if (prop1.name == mappings[prop2.name]) {
-            mapValue(prop1, prop2, targetPropType, originalPropType, originalProp)
-        } else { // if not return null
-            null
+            prop = PropertyWrapper(value)
         }
+
+        // Get the subfield mapped values, if any
+        val subFieldMappedValues = mappedValues.mapNotNull {
+            val newLoc = parseLocation(it.key).let { loc ->
+                if (loc.firstOrNull() == targetFieldName && loc.size > 1) {
+                    loc.drop(1).joinToString("/")
+                } else null
+            } ?: return@mapNotNull null
+
+            newLoc to it.value
+        }.toMap()
+
+        // Get the subfield exclusions, if any
+        val subfieldExclusions = fieldExclusions.mapNotNull { exclusion ->
+            parseLocation(exclusion).let { loc ->
+                if (loc.first() == targetFieldName && loc.size > 1) {
+                    loc.drop(1).joinToString("/")
+                } else null
+            }
+        }
+
+        val finalProp = if (subFieldMappedValues.isNotEmpty() || subfieldExclusions.isNotEmpty()) {
+            if (prop.value == null) {
+                val nextMappedValues = subFieldMappedValues.filter {
+                    parseLocation(it.key).size == 1
+                }
+
+                val newProp = buildOrUpdate(
+                    type = targetField.value.type,
+                    properties = nextMappedValues,
+                    useSettersOnly = useSettersOnly,
+                    baseEntity = baseEntity,
+                )
+                if (newProp != null) {
+                    val newPropEntity = originalEntity.properties[targetFieldName]?.apply {
+                        this.value = newProp
+                    } ?: OriginalEntity(newProp, newProp::class.starProjectedType)
+
+                    val remainingMappedValues = subFieldMappedValues.filterNot { it.key in nextMappedValues.keys }
+                    mapTo(
+                        originalEntity = newPropEntity,
+                        targetType = targetField.value.type,
+                        exclusions = subfieldExclusions,
+                        functionMappings = remainingMappedValues.map {
+                            null to ({ it.value } to (it.key to MappingFallback.NULL))
+                        }.toMap(),
+                        baseObject = baseEntity?.properties?.get(targetFieldName)?.value
+                    )
+                } else null
+            } else {
+                // If the prop is not null, but there are subfield mapped values or subfield exclusions, call the mapTo
+                //  function with the subfield exclusions and subfield mapped values
+                mapTo(
+                    originalEntity = OriginalEntity(prop.value!!, targetField.value.type),
+                    targetType = targetField.value.type,
+                    exclusions = subfieldExclusions,
+                    functionMappings = subFieldMappedValues.map {
+                        null to ({ it.value } to (it.key to MappingFallback.NULL))
+                    }.toMap(),
+                    baseObject = baseEntity?.properties?.get(targetFieldName)?.value
+                )
+            }
+        } else prop.value
+
+        props[targetFieldName] = finalProp
     }
 
-    // If the props have the same name, return
-    if (prop1.name == prop2.name)
-        return mapValue(prop1, prop2, targetPropType, originalPropType, originalProp)
-
-    // If it was not possible to map the value, return null
-    return null
-}
-
-@PublishedApi
-internal inline fun <reified A, reified B> getNewValueCustomMappings(
-    prop1: KProperty<*>,
-    prop2: KProperty<*>,
-    customMappings: Map<String, Pair<(source: A) -> B, String>>? = null,
-    originalProp: Any,
-): Any? {
-    val (targetPropType, originalPropType) = getPropTypes(prop1, prop2)
-
-    // If no custom mappings are provided, or if no custom mappings uses the
-    //  current originalProp as source, return null
-    if (customMappings?.contains(prop2.name) != true)
-        return MappingReturnCodes.NORMAL_MAPPING
-
-    // If the target prop is not found, skip and look for the right one
-    if (prop1.name != customMappings[prop2.name]?.second)
-        return MappingReturnCodes.CUSTOM_MAPPING
-
-    // If source of the data don't have the same type as the input of the function, map using the normal mapping
-    if (originalPropType != A::class.qualifiedName.toString().replace("?", ""))
-        return MappingReturnCodes.NORMAL_MAPPING
-
-    // If the return value is null, return null
-    val newVal = customMappings[prop2.name]?.first!!(originalProp as A) ?: return MappingReturnCodes.CUSTOM_MAPPING
-
-
-    // If the props are iterables, then map the subProps
-    if (MutableCollection::class.isSuperclassOf(prop1.returnType.jvmErasure)
-        && Iterable::class.isSuperclassOf(newVal::class))
-        return getMappedCollection(prop1, newVal).let { if (it?.isEmpty() == true) null else it }
-
-    // If the type of the return value is different from the target's type, map using the mapTo function
-    if (targetPropType != getClassType(newVal::class) && targetPropType != Any::class.qualifiedName.toString()) {
-        return newVal.mapTo(prop1.returnType.jvmErasure)
+    return if (baseEntity != null && !useSettersOnly) {
+        buildWithBaseEntity(
+            type = targetType,
+            properties = props,
+            baseEntity = baseEntity,
+        )
+    } else {
+        buildOrUpdate(
+            type = targetType,
+            properties = props,
+            useSettersOnly = useSettersOnly,
+            baseEntity = baseEntity,
+        )
     }
-
-    // If not, map directly
-    return newVal
 }

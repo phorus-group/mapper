@@ -33,7 +33,7 @@ internal class OriginClassesTest {
     @Test
     fun `wrap object in OriginEntity`() {
 
-        val result = OriginEntity(person)
+        val result = OriginalEntity(person, typeOf<Person>())
 
         // Person asserts
         assertEquals(3, result.properties.size)
@@ -68,7 +68,7 @@ internal class OriginClassesTest {
 
     @Test
     fun `wrap object in OriginEntity and validate bidirectional access`() {
-        val result = OriginEntity(person)
+        val result = OriginalEntity(person, typeOf<Person>())
 
         // Get the parent class of the name field = Person
         assertEquals(person, result.properties["name"]?.parent?.value)
@@ -93,7 +93,7 @@ internal class OriginClassesTest {
     fun `find property`() {
         val location = listOf("pet", "petName")
 
-        val result = OriginEntity(person).findProperty(location)
+        val result = OriginalEntity(person, typeOf<Person>()).findProperty(location)
 
         assertNotNull(result)
 
