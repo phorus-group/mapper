@@ -170,7 +170,21 @@ internal class MappingFunctionsTest {
 
     @Test
     fun `process mappings with a null original field value and a non-nullable target field`() {
-        TODO()
+        val person = MappingTestClasses.PersonNullable(name = null, age = 7)
+
+        val result = processMappings(
+            originalEntity = OriginalEntity(person, typeOf<MappingTestClasses.PersonNullable>()),
+            targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+            mappings = mapOf(
+                "name" to (null to ("nameStr" to ProcessMappingFallback.NULL)),
+                "age" to (null  to ("ageTmp" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertEquals(1, result.size)
+
+        assertEquals(7, result["ageTmp"])
     }
 
     @Test
