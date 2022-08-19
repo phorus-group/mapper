@@ -5,26 +5,6 @@ import group.phorus.mapper.helper.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 
-
-/**
- *
- * 1- Iterar entre todos los props del target y guardar en un Map<String, KMutableProperty<*>>
- * 2- Iterar entre todos los props del origin y guardar en un Map<String, KMutableProperty<*>>
- * 3- Mapear campos con mismo nombre / key, seteando mediante un setter / constructor, o llamando a mapTo nuevamente
- * 4- Para mapear usando el constructor, usar kclass.constructor.parameters y ver si el existe un constructor
- *      con los parametros necesarios, en caso que exista utilizarlo con constructor.callBy
- * 5- Al buscar dicho constructor, guardar los parametros que si existen en el constructor y los que no pero tienen setter
- * 6- Crear anotacion de clase para preferir mappear con setters o con constructores primero, tambien dar la opcion
- *      en el metodo para hacerlo en el mappeo entero
- * 7- Hacer que la recursividad del mapTo sea llamando a un metodo interno que devuelva un map de referencias
- *      Map<String, KMutableProperty<*>>, de forma tal que todos los mapeos se pueda hacer al final de la primera ejecucion
- *
- * 8- Crear test que valide un mapFrom dede un map keys y/o un map values a un list
- * 9- Puede que agregar tambien un parametro functions que acepte un Map<String, (source: Any) -> Any>
- * 10- Agregar variaciones del metodo mapTo simplificadas en la parte de mappings y functionmappings para utilizar
- *      el Fallback continue por defualt
- */
-
 inline fun <reified T: Any> Any.mapTo(
     exclusions: List<TargetField> = emptyList(),
     mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),

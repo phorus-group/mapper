@@ -1,5 +1,6 @@
 package group.phorus.mapper
 
+import group.phorus.mapper.enums.MappingFallback
 import group.phorus.mapper.model.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
@@ -52,35 +53,35 @@ internal class MappingExtensionsTest {
 //            assertEquals(87, result.age)
 //        }
 //
-//        @Test
-//        fun `map from one object to another ignoring a property`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val result = person.mapTo(PersonDTO::class, exclusions = listOf("surname"))
-//
-//            assertNotNull(result)
-//
-//            // Because of the exclusion, the property is null even if it has the same name as a property in the original object
-//            assertNull(result.surname)
-//
-//            assertNull(result.nameStr)
-//            assertNull(result.ageStr)
-//        }
-//
-//        @Test
-//        fun `map from one object to another manually mapping a property`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val result = person.mapTo(PersonDTO::class, mappings = mapOf("name" to "nameStr"))
-//
-//            assertNotNull(result)
-//
-//            // The mapper will use the custom mappings to map from an original property to a custom target property
-//            assertEquals("nameTest", result.nameStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
+        @Test
+        fun `map from one object to another ignoring a property`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<PersonDTO>(exclusions = listOf("surname"))
+
+            assertNotNull(result)
+
+            // Because of the exclusion, the property is null even if it has the same name as a property in the original object
+            assertNull(result.surname)
+
+            assertNull(result.nameStr)
+            assertNull(result.ageStr)
+        }
+
+        @Test
+        fun `map from one object to another manually mapping a property`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<PersonDTO>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            assertNotNull(result)
+
+            // The mapper will use the custom mappings to map from an original property to a custom target property
+            assertEquals("nameTest", result.nameStr)
+
+            assertEquals("surnameTest", result.surname)
+        }
+
 //        @Test
 //        fun `map from one object to another manually mapping a property with the wrong type`() {
 //            val person = Person(23, "nameTest", "surnameTest", 87)
