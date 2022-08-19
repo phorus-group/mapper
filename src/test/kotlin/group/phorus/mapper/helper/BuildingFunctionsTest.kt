@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 
+@Suppress("UNUSED", "UNUSED_PARAMETER", "ClassName")
 internal class BuildingFunctionsTest {
 
     class BuildTestClasses {
@@ -59,7 +60,7 @@ internal class BuildingFunctionsTest {
     }
 
     @Nested
-    inner class `Build object with constructor`() {
+    inner class `Build object with constructor` {
 
         @Test
         fun `find a constructor with no params - Test constructor 0`() {
@@ -391,7 +392,7 @@ internal class BuildingFunctionsTest {
     }
 
     @Nested
-    inner class `Build object with constructor and setters`() {
+    inner class `Build object with constructor and setters` {
 
         @Test
         fun `find a constructor with all the params, and set the last property with setters - Test constructor 1`() {

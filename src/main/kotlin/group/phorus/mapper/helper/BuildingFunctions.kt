@@ -4,8 +4,6 @@ import kotlin.reflect.*
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
 
-data class PropertyWrapper<T>(val value: T)
-
 /**
  * Reified version of the buildOrUpdate method.
  */
@@ -96,7 +94,6 @@ fun buildOrUpdate(
  *
  * @param type of the class to build
  * @param properties to set with their value
- * @param useSettersOnly option to use setters only, not needed if a baseClass is used
  * @param baseEntity the entity to build the new one from
  * @return the built entity, or null
  */
@@ -113,6 +110,7 @@ fun buildWithBaseEntity(
 /**
  * Reified version of the buildWithConstructor method.
  */
+@Suppress("UNCHECKED_CAST")
 inline fun <reified T: Any> buildWithConstructor(
     properties: Map<String, Value?> = emptyMap(),
 ): Pair<T?, List<String>> = buildWithConstructor(

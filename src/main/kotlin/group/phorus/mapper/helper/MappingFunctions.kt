@@ -39,12 +39,12 @@ fun MappingFallback.toProcessMappingFallback() =
  *
  * @param originalEntity original entity to take the values from
  * @param targetClass with the desired location
- * @param mappings mappings TODO: Explain a ton more
+ * @param mappings mappings containing the original field, a modifier function (can be null), the target field, and a
+ *  fallback used in case the function fails to process the values.
  * @param exclusions excluded fields from the target class, exclusions take priority
  *  over everything else
  * @return a map with the target class locations and mapped values
  */
-@OptIn(ExperimentalReflectionOnLambdas::class)
 fun processMappings(
     originalEntity: OriginNodeInterface<*>,
     targetClass: TargetClass<*>,
@@ -52,163 +52,32 @@ fun processMappings(
     exclusions: List<TargetField>,
 ): Map<TargetField, Value?> =
     mappings
-        .filterNot { mapping ->
-            // Filter out excluded properties
-            // Get the locations of the target field
-            val targetFieldLocation = parseLocation(mapping.value.second.first)
-
-            // Check if the target field or any of its parents is excluded
-            var targetFieldExcluded = false
-            var targetStringLoc = ""
-            targetFieldLocation.forEach {
-                targetStringLoc+= it
-                if (targetStringLoc in exclusions) {
-                    targetFieldExcluded = true
-                    return@forEach
-                }
-                targetStringLoc+= "/"
-            }
-
-            // If the target field is excluded, skip the mapping
-            targetFieldExcluded
-        }
+        .filterNot { isExcluded(it.value.second.first, exclusions) } // Filter out excluded properties
         .mapNotNull { mapping ->
             val originalProp = mapping.key?.let { originalEntity.findProperty(parseLocation(it))}
-            val targetProp = targetClass.findProperty(parseLocation(mapping.value.second.first))
+            val targetField = targetClass.findProperty(parseLocation(mapping.value.second.first))
                 ?: return@mapNotNull null
 
-            // Test donde la propiedad no es null, pero el valor si es null
-
-            val originalPropValue: PropertyWrapper<Any?>? = mapping.value.first?.let mapProp@{ function: Function<*> ->
-
-                // Value returned in case something fails in the mapping
-                // If the fallback is null, then return a property wrapper with a null value, if not
-                //  return null to continue with the normal mapping
-                val exitValue = if (mapping.value.second.second == ProcessMappingFallback.NULL && targetProp.type.isMarkedNullable) {
-                    PropertyWrapper<Any?>(null)
-                } else null
-
-                // If the function has more than 1 param, return the exit value
-                val functionParam = (function.reflect()?.parameters
-                    ?: try { (function as KFunction<*>).parameters } catch (_: Exception) { null })
-                    .let {
-                        if (it == null || it.size > 1)
-                            return@mapProp exitValue
-                        if (it.isEmpty()) null else it.single()
-                    }
-
-                // Get the function input type
-                val inputType = functionParam?.type
-
-                val retType = function.reflect()?.returnType
-                    // If it's null, try to get process the function as a KFunction
-                    ?: try { (function as KFunction<*>).returnType } catch (_: Exception) { null }
-                    // If the output type is null we cannot go further, return the exit value
-                    ?: return@mapProp exitValue
-
-                // If the original prop is null and function param is not optional or nullable, return the exit value
-                if (originalProp?.value == null && functionParam?.isOptional == false && !functionParam.type.isMarkedNullable)
-                    return@mapProp exitValue
-
-                // If the original prop type is nullable, but the original prop value is not null, remove the
-                //  nullability of the type
-                val originalPropType = originalProp?.value?.let {
-                    val type = originalProp.type
-                    if (type.isMarkedNullable) {
-                        // Then remove the nullability of the function return type
-                        type.classifier?.createType(
-                            arguments = type.arguments,
-                            nullable = false,
-                            annotations = type.annotations,
-                        ) ?: type
-                    } else {
-                        type
-                    }
-                }
-
-                // If the function input type is not a supertype or the same type as the original property, then
-                //  map the property, if the input type is null then do nothing
-                val inputProp = originalPropType?.let {
-                    if (inputType?.isSupertypeOf(it) == false) {
-                        mapTo(originalEntity = originalProp, targetType = inputType)
-                    } else originalProp.value
-                }
-
-                // Call the function and save the returned value
-                val returnValue = try {
-                    PropertyWrapper(
-                        // If the function param is null
-                        if (inputProp == null) {
-                            // If the function param is null
-                            if (functionParam == null) {
-                                // Then there are no params, call the function without anything
-                                (function as Function0<*>).invoke()
-                            } else if (functionParam.isOptional) {
-                                // If the inputProp is null, but the function param is optional, then call the function
-                                (function as KFunction<*>).callBy(emptyMap())
-                                // If the inputProp is null and the function param is not optional, return the exit value
-                            } else if (functionParam.type.isMarkedNullable) {
-                                // If the inputProp is null, but the function param is nullable, then call the function
-                                (function as Function1<Any?, *>).invoke(null)
-                                // If the input prop is null, and the input type is present, and it's not nullable
-                                //   or optional we cannot go further, return the exit value
-                            } else return@mapProp exitValue
-                        } else if (functionParam != null) {
-                            // If the input prop and the function param are not null, call the function with
-                            //  the input prop
-                            (function as Function1<Any?, *>).invoke(inputProp)
-                        } else {
-                            // If the input param is not null but the function param is null, then ignore the input
-                            //  param and call the function
-                            (function as Function0<*>).invoke()
-                        }
-                    )
-                } catch (_: Exception) {
-                    // If the function throws an exception we cannot go further, return the exit value
-                    return@mapProp exitValue
-                }
-
-                // If the returned value is null, return it directly since we don't need to check the type
-                if (returnValue.value == null)
-                    if (targetProp.type.isMarkedNullable) {
-                        return@mapProp PropertyWrapper<Any?>(null)
-                    } else return@mapProp null
-
-                // The function returned value cannot be null at this point, so remove the nullability of the function
-                //  return type
-                val returnType = retType.let { type ->
-                    type.classifier?.createType(
-                        arguments = type.arguments,
-                        nullable = false,
-                        annotations = type.annotations,
-                    ) ?: type
-                }
-
-                // If the target prop type is not a supertype or the same type as the function return
-                //  type, then map the returned value
-                val returnProp = if (!targetProp.type.isSupertypeOf(returnType)) {
-                    mapTo(
-                        originalEntity = OriginalEntity(returnValue.value, returnType),
-                        targetType = targetProp.type,
-                    )
-                } else returnValue.value
-
-                PropertyWrapper(returnProp)
-            } ?: if (originalProp == null) {
+            val originalPropValue: PropertyWrapper<Any?>? = processFunction(
+                originalProp = originalProp,
+                function = mapping.value.first,
+                targetField = targetField,
+                fallback = mapping.value.second.second,
+            ) ?: if (originalProp == null) {
                 // If the original prop is null, skip the value or not based on the mapping fallback
-                if (targetProp.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
+                if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
                     PropertyWrapper(null)
                 } else null
             } else if (originalProp.value == null) {
                 // If the original prop value is null and the target property is not nullable, return null to skip
                 //  the mapping
-                if (targetProp.type.isMarkedNullable) {
+                if (targetField.type.isMarkedNullable) {
                     PropertyWrapper(null)
                 } else null
             } else {
                 // If the mapping has a function and reaches this point, something failed
                 if (mapping.value.first != null) {
-                    if (targetProp.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
+                    if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
                         PropertyWrapper(null)
                     } else null
                 } else {
@@ -224,12 +93,190 @@ fun processMappings(
 
                     // If the target prop type is not a supertype or the same type as the original value type, then
                     //  map the value
-                    if (!targetProp.type.isSupertypeOf(originalValueType)) {
-                        PropertyWrapper(mapTo(originalEntity = originalProp, targetType = targetProp.type))
-                    } else PropertyWrapper(originalProp.value)
+                    val finalProp = if (!targetField.type.isSupertypeOf(originalValueType)) {
+                        mapTo(originalEntity = originalProp, targetType = targetField.type)
+                    } else originalProp.value
+
+                    // If the mapped value is null, return it or return null based on the fallback and the nullability
+                    //  of the target field
+                    if (finalProp == null) {
+                        if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
+                           PropertyWrapper(null)
+                        } else null
+                    } else PropertyWrapper(finalProp)
                 }
             }
 
             // Return the location of the target property and the mapped value, only if it's not null
             originalPropValue?.let { mapping.value.second.first to it.value }
         }.toMap()
+
+/**
+ * Check if the target field or any of its parents is excluded
+ *
+ * @param field to check
+ * @param exclusions exclusions
+ * @return true if the field is excluded, false otherwise
+ */
+private fun isExcluded(field: Field, exclusions: List<TargetField>): Boolean {
+    var targetFieldExcluded = false
+    var targetStringLoc = ""
+    parseLocation(field).forEach {
+        targetStringLoc+= it
+        if (targetStringLoc in exclusions) {
+            targetFieldExcluded = true
+            return@forEach
+        }
+        targetStringLoc+= "/"
+    }
+
+    return targetFieldExcluded
+}
+
+/**
+ * Process a function mapping, if any
+ *
+ * @param originalProp original property
+ * @param function function to execute, only functions with 1 or fewer parameters are accepted:
+ *  If the original property value isn't the same type or a supertype of the function parameter (if present),
+ *    we'll try to map it to the right type
+ *  If the function return value is not the same type or a supertype of the target field, we'll try to map it
+ *    to the right type
+ * @param targetField target field
+ * @return the final value after executing the desired function. If the final value cannot be mapped, null
+ *  Possible causes to return a null value:
+ *  - The function is null
+ *  - The function needs a non-nullable and non-optional parameter, but the original field doesn't exist or its null
+ *  - The function return value is null or couldn't be mapped to the right type
+ *  - The function doesn't return anything
+ *  - The function needs more than 1 parameter
+ *  - The function throws an exception
+ *  In any of these cases, if the mapping fallback is null, we'll try to return a property wrapper with null,
+ *    but if the target field is non-nullable we'll return null directly
+ */
+@OptIn(ExperimentalReflectionOnLambdas::class)
+private fun processFunction(
+    originalProp: OriginNodeInterface<*>?,
+    function: MappingFunction?,
+    targetField: TargetNode<*>,
+    fallback: ProcessMappingFallback,
+): PropertyWrapper<Any?>? = function?.let mapProp@{
+    // Value returned in case something fails in the mapping
+    // If the fallback is null, then return a property wrapper with a null value, if not
+    //  return null to continue with the normal mapping
+    val exitValue = if (fallback == ProcessMappingFallback.NULL && targetField.type.isMarkedNullable) {
+        PropertyWrapper<Any?>(null)
+    } else null
+
+    // If the function has more than 1 param, return the exit value
+    val functionParam = (function.reflect()?.parameters
+        ?: try { (function as KFunction<*>).parameters } catch (_: Exception) { null })
+        .let {
+            if (it == null || it.size > 1)
+                return@mapProp exitValue
+            if (it.isEmpty()) null else it.single()
+        }
+
+    // Get the function input type
+    val inputType = functionParam?.type
+
+    val retType = function.reflect()?.returnType
+    // If it's null, try to get process the function as a KFunction
+        ?: try { (function as KFunction<*>).returnType } catch (_: Exception) { null }
+        // If the output type is null we cannot go further, return the exit value
+        ?: return@mapProp exitValue
+
+    // If the original prop is null and function param is not optional or nullable, return the exit value
+    if (originalProp?.value == null && functionParam?.isOptional == false && !functionParam.type.isMarkedNullable)
+        return@mapProp exitValue
+
+    // If the original prop type is nullable, but the original prop value is not null, remove the
+    //  nullability of the type
+    val originalPropType = originalProp?.value?.let {
+        val type = originalProp.type
+        if (type.isMarkedNullable) {
+            // Then remove the nullability of the function return type
+            type.classifier?.createType(
+                arguments = type.arguments,
+                nullable = false,
+                annotations = type.annotations,
+            ) ?: type
+        } else {
+            type
+        }
+    }
+
+    // If the function input type is not a supertype or the same type as the original property, then
+    //  map the property, if the input type is null then do nothing
+    val inputProp = originalPropType?.let {
+        if (inputType?.isSupertypeOf(it) == false) {
+            mapTo(originalEntity = originalProp, targetType = inputType)
+        } else originalProp.value
+    }
+
+    // Call the function and save the returned value
+    val returnValue = try {
+        PropertyWrapper(
+            // If the function param is null
+            if (inputProp == null) {
+                // If the function param is null
+                if (functionParam == null) {
+                    // Then there are no params, call the function without anything
+                    (function as Function0<*>).invoke()
+                } else if (functionParam.isOptional) {
+                    // If the inputProp is null, but the function param is optional, then call the function
+                    (function as KFunction<*>).callBy(emptyMap())
+                    // If the inputProp is null and the function param is not optional, return the exit value
+                } else if (functionParam.type.isMarkedNullable) {
+                    // If the inputProp is null, but the function param is nullable, then call the function
+                    (function as Function1<Any?, *>).invoke(null)
+                    // If the input prop is null, and the input type is present, and it's not nullable
+                    //   or optional we cannot go further, return the exit value
+                } else return@mapProp exitValue
+            } else if (functionParam != null) {
+                // If the input prop and the function param are not null, call the function with
+                //  the input prop
+                (function as Function1<Any?, *>).invoke(inputProp)
+            } else {
+                // If the input param is not null but the function param is null, then ignore the input
+                //  param and call the function
+                (function as Function0<*>).invoke()
+            }
+        )
+    } catch (_: Exception) {
+        // If the function throws an exception we cannot go further, return the exit value
+        return@mapProp exitValue
+    }
+
+    // If the returned value is null, return it directly since we don't need to check the type
+    if (returnValue.value == null)
+        if (targetField.type.isMarkedNullable) {
+            return@mapProp PropertyWrapper<Any?>(null)
+        } else return@mapProp null
+
+    // The function returned value cannot be null at this point, so remove the nullability of the function
+    //  return type
+    val returnType = retType.let { type ->
+        type.classifier?.createType(
+            arguments = type.arguments,
+            nullable = false,
+            annotations = type.annotations,
+        ) ?: type
+    }
+
+    // If the target prop type is not a supertype or the same type as the function return
+    //  type, then map the returned value
+    val returnProp = if (!targetField.type.isSupertypeOf(returnType)) {
+        mapTo(
+            originalEntity = OriginalEntity(returnValue.value, returnType),
+            targetType = targetField.type,
+        )
+    } else returnValue.value
+
+    // If the mapped value is null, return it or return null based on the nullability of the target field
+    if (returnProp == null) {
+        if (targetField.type.isMarkedNullable) {
+            return@mapProp PropertyWrapper<Any?>(null)
+        } else return@mapProp null
+    } else PropertyWrapper(returnProp)
+}
