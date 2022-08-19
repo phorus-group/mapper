@@ -82,20 +82,20 @@ internal class MappingExtensionsTest {
             assertEquals("surnameTest", result.surname)
         }
 
-//        @Test
-//        fun `map from one object to another manually mapping a property with the wrong type`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val result = person.mapTo(PersonDTO::class, mappings = mapOf("age" to "nameStr"))
-//
-//            assertNotNull(result)
-//
-//            // If the mapper cannot automatically map the original property to the target one, it will leave it as null
-//            assertNull(result.nameStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
+        @Test
+        fun `map from one object to another manually mapping a property with the wrong type`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<PersonDTO>(mappings = mapOf("age" to ("nameStr" to MappingFallback.NULL)))
+
+            assertNotNull(result)
+
+            // If the mapper cannot automatically map the original property to the target one, it will leave it as null
+            assertNull(result.nameStr)
+
+            assertEquals("surnameTest", result.surname)
+        }
+
 //        @Test
 //        fun `map from one object to another manually mapping a nonexistent property`() {
 //            val person = Person(23, "nameTest", "surnameTest", 87)

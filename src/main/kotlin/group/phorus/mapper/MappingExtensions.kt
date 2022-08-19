@@ -210,3 +210,40 @@ fun mapTo(
         )
     }
 }
+
+// checkear target type y original type:
+//  - si el target type es number y el original type no es number:
+//    - si es string y mapprimitives es = true utilizar to Float o similar, si no devolver null
+//    - si no es string devolver null
+//  - si el target type es string y el original type no es string:
+//    - si es number y mapprimitives es = true utilizar toString, si no devolver null
+//    - si no es number devolver null
+//  - si ambos son number o string mappear directamente
+
+private fun processPrimitives(
+    targetType: KType,
+    originalEntity: OriginNodeInterface<*>,
+    mapPrimitives: Boolean = true,
+): PropertyWrapper<Any?>? {
+    if ((targetType != typeOf<String>() && targetType != typeOf<Number>())
+        && (originalEntity.type != typeOf<String>() && originalEntity.type != typeOf<Number>()))
+        return null
+
+    if (!mapPrimitives) PropertyWrapper(null)
+
+    if (targetType == typeOf<String>() && originalEntity.type == typeOf<String>())
+        return PropertyWrapper(originalEntity.value)
+
+    if (targetType == typeOf<Number>() && originalEntity.type == typeOf<Number>()) {
+        val value: Number? = when (targetType) {
+            typeOf<Double>() -> (originalEntity.value as Number).toDouble()
+            typeOf<Float>() -> (originalEntity.value as Number).toFloat()
+            typeOf<Long>() -> (originalEntity.value as Number).toLong()
+            typeOf<Int>() -> (originalEntity.value as Number).toInt()
+            typeOf<Short>() -> (originalEntity.value as Number).toShort()
+            typeOf<Byte>() -> (originalEntity.value as Number).toByte()
+            else -> null
+        }
+        return value?.let { PropertyWrapper(it) }
+    }
+}
