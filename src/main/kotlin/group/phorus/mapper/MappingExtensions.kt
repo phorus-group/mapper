@@ -5,6 +5,27 @@ import group.phorus.mapper.helper.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 
+inline fun <reified T: Any> T.updateFrom(
+    entity: Any,
+    updateOption: UpdateOption = UpdateOption.IGNORE_NULLS,
+    exclusions: List<TargetField> = emptyList(),
+    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
+    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
+    ignoreMapFromAnnotations: Boolean = false,
+    useSettersOnly: Boolean = true,
+    mapPrimitives: Boolean = true,
+): T? = mapTo(
+    originalEntity = OriginalEntity(entity, this::class.starProjectedType),
+    targetType = typeOf<T>(),
+    baseEntity = this to updateOption,
+    exclusions = exclusions,
+    mappings = mappings,
+    functionMappings = functionMappings,
+    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+    useSettersOnly = useSettersOnly,
+    mapPrimitives = mapPrimitives,
+) as T?
+
 inline fun <reified T: Any> Any.mapTo(
     exclusions: List<TargetField> = emptyList(),
     mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
@@ -24,6 +45,10 @@ inline fun <reified T: Any> Any.mapTo(
 ) as T?
 
 
+enum class UpdateOption {
+    SET_NULLS, IGNORE_NULLS
+}
+
 /**
  *
  *
@@ -34,7 +59,7 @@ inline fun <reified T: Any> Any.mapTo(
 fun mapTo(
     originalEntity: OriginNodeInterface<*>,
     targetType: KType,
-    baseObject: Any? = null,
+    baseEntity: Pair<Any, UpdateOption>? = null,
     exclusions: List<TargetField> = emptyList(),
     mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
     functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
@@ -71,7 +96,7 @@ fun mapTo(
     // Format the exclusion locations
     val fieldExclusions = exclusions.map { parseLocation(it).joinToString("/") }
     val targetClass = TargetClass(targetType.classifier as KClass<*>)
-    val baseEntity = baseObject?.let { OriginalEntity(it, targetType) }
+    val base = baseEntity?.first?.let { OriginalEntity(it, targetType) }
 
     // Map all the mappings
     val mappingValues = processMappings(
@@ -137,6 +162,12 @@ fun mapTo(
             }
         }
 
+        // TODO: Seguir implementando updateFrom desde aca para abajo
+        //  - Si hay un base entity, en caso que el updateoption sea ignore_null, en caso que mappings, function
+        //    mappings y default mappings devuelvan un value null, utilizar la propiedad del base entity
+        //  - Si hay un base entity y updateoption es set_null, en caso que mappings, function mappings y default
+        //    mappings devuelvan value null, setearlo, en caso que no devuelvan null utilizar el value de la base entity
+        //  - A la hora de construir el objeto, se tendra una lista de propiedades que incluyen
         if (prop == null) {
             var value: Any? = null
             // If the target property wasn't excluded or mapped until this point, look for the value in the original entity
@@ -154,7 +185,9 @@ fun mapTo(
                 }
             }
 
-            prop = PropertyWrapper(value)
+            prop = if (value == null && baseEntity?.second != UpdateOption.IGNORE_NULLS) {
+                null
+            } else PropertyWrapper(value)
         }
 
         // Get the subfield mapped values, if any
@@ -178,7 +211,11 @@ fun mapTo(
         }
 
         val finalProp = if (subFieldMappedValues.isNotEmpty() || subfieldExclusions.isNotEmpty()) {
-            if (prop.value == null) {
+            val newBaseEntity = (base?.properties?.get(targetFieldName)?.value)?.let {
+                it to baseEntity.second
+            }
+
+            if (prop?.value == null) {
                 val nextMappedValues = subFieldMappedValues.filter {
                     parseLocation(it.key).size == 1
                 }
@@ -187,7 +224,7 @@ fun mapTo(
                     type = targetField.value.type,
                     properties = nextMappedValues,
                     useSettersOnly = useSettersOnly,
-                    baseEntity = baseEntity,
+                    baseEntity = newBaseEntity,
                 )
                 if (newProp != null) {
                     val newPropEntity = originalEntity.properties[targetFieldName]?.apply {
@@ -202,7 +239,7 @@ fun mapTo(
                         functionMappings = remainingMappedValues.map {
                             null to ({ it.value } to (it.key to MappingFallback.NULL))
                         }.toMap(),
-                        baseObject = baseEntity?.properties?.get(targetFieldName)?.value
+                        baseEntity = newBaseEntity
                     )
                 } else null
             } else {
@@ -215,26 +252,26 @@ fun mapTo(
                     functionMappings = subFieldMappedValues.map {
                         null to ({ it.value } to (it.key to MappingFallback.NULL))
                     }.toMap(),
-                    baseObject = baseEntity?.properties?.get(targetFieldName)?.value
+                    baseEntity = newBaseEntity
                 )
             }
-        } else prop.value
+        } else prop?.value ?: return@forEach
 
         props[targetFieldName] = finalProp
     }
 
-    return if (baseEntity != null && !useSettersOnly) {
+    return if (baseEntity != null && !useSettersOnly && props.isNotEmpty()) {
         buildWithBaseEntity(
             type = targetType,
             properties = props,
-            baseEntity = baseEntity,
+            baseEntity = baseEntity.first,
         )
     } else {
         buildOrUpdate(
             type = targetType,
             properties = props,
             useSettersOnly = useSettersOnly,
-            baseEntity = baseEntity,
+            baseEntity = baseEntity?.first,
         )
     }
 }

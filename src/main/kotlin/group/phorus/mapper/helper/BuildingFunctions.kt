@@ -5,6 +5,25 @@ import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
 
 /**
+ * Creates a new entity based on another already existing one, useful when you want to use a base entity, but you don't
+ *  want to be forced to only use setters for every property
+ *
+ * @param type of the class to build
+ * @param properties to set with their value
+ * @param baseEntity the entity to build the new one from
+ * @return the built entity, or null
+ */
+fun buildWithBaseEntity(
+    type: KType,
+    properties: Map<String, Value?>,
+    baseEntity: Any,
+): Any? = buildOrUpdate(
+    type = type,
+    properties = OriginalEntity(baseEntity, type).properties.map { it.key to it.value.value }.toMap() + properties,
+    useSettersOnly = false,
+)
+
+/**
  * Reified version of the buildOrUpdate method.
  */
 inline fun <reified T: Any> buildOrUpdate(
@@ -63,6 +82,10 @@ fun buildOrUpdate(
         .forEach { prop ->
             val property = prop.key
 
+            // If the property already have the desired value, only happens if a based class is being used
+            if (property.getter.call(builtObject) == prop.value || property.getter.call(builtObject) === prop.value)
+                return@forEach
+
             // If the property is not mutable it doesn't have any setters, return
             if (property !is KMutableProperty<*>)
                 return@forEach
@@ -87,25 +110,6 @@ fun buildOrUpdate(
 
     return builtObject
 }
-
-/**
- * Creates a new entity based on another already existing one, useful when you want to use a base entity, but you don't
- *  want to be forced to only use setters for every property
- *
- * @param type of the class to build
- * @param properties to set with their value
- * @param baseEntity the entity to build the new one from
- * @return the built entity, or null
- */
-fun buildWithBaseEntity(
-    type: KType,
-    properties: Map<String, Value?>,
-    baseEntity: Any,
-): Any? = buildOrUpdate(
-    type = type,
-    properties = OriginalEntity(baseEntity, type).properties.map { it.key to it.value.value }.toMap() + properties,
-    useSettersOnly = false,
-)
 
 /**
  * Reified version of the buildWithConstructor method.

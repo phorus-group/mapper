@@ -182,6 +182,42 @@ internal class MappingExtensionsTest {
             assertNull(result)
         }
 
+        @Test // TODO: Delete if repeated
+        fun `test update from`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+            val person2 = Person(name = "nameTest2")
+
+            val result = person.updateFrom(person2)
+
+            assertNotNull(result)
+
+            assertTrue(result === person)
+
+            assertEquals(23, result.id)
+            assertEquals("nameTest2", result.name)
+            assertEquals("surnameTest", result.surname)
+            assertEquals(87, result.age)
+        }
+
+        @Test // TODO: Delete if repeated
+        fun `test update from without setters only`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+            val person2 = Person(name = "nameTest2")
+
+            val result = person.updateFrom(person2, useSettersOnly = false)
+
+            assertNotNull(result)
+
+            assertTrue(result != person)
+
+            assertEquals(23, result.id)
+            assertEquals("nameTest2", result.name)
+            assertEquals("surnameTest", result.surname)
+            assertEquals(87, result.age)
+        }
+
+        // TODO: Create compound tests for the last 2 tests
+
 //        @Test
 //        fun `map from one object to another manually mapping a nonexistent property`() {
 //            val person = Person(23, "nameTest", "surnameTest", 87)
