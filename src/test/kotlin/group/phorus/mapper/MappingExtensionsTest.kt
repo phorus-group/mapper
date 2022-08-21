@@ -1,17 +1,20 @@
 package group.phorus.mapper
 
 import group.phorus.mapper.enums.MappingFallback
+import group.phorus.mapper.helper.PropertyWrapper
 import group.phorus.mapper.model.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.lang.reflect.Type
+import kotlin.reflect.full.*
+import kotlin.reflect.jvm.javaType
+import kotlin.reflect.typeOf
 import kotlin.test.assertNotNull
 
 // TODO: Add updateFrom method to replace the "baseObject" property in the mapTo function
 //  Add a test checking that mappings and custom mappings don't work if the field is excluded
-//  Make the mapTo method woth with <> type
 //  Support vararg params
-//  Compound customMappings
 //  Add a performance test comparing the mapping speed of the library with jackson convertValue function
 
 internal class MappingExtensionsTest {
@@ -94,6 +97,89 @@ internal class MappingExtensionsTest {
             assertNull(result.nameStr)
 
             assertEquals("surnameTest", result.surname)
+        }
+
+        // TODO: Test native mappings: string to int/long/etc; int/long/etc to string; int to long, double to int, etc
+
+        @Test // TODO: Delete if repeated
+        fun `test collections`() {
+            val person = listOf(
+                Person(23, "nameTest1", "surnameTest1", 87),
+                Person(24, "nameTest2", "surnameTest2", 88),
+            )
+
+            val result = person.mapTo<List<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            assertNotNull(result)
+
+            assertEquals(2, result.size)
+
+            assertEquals("nameTest1", result[0].nameStr)
+            assertEquals("surnameTest1", result[0].surname)
+            assertNull(result[0].ageStr)
+            assertEquals("nameTest2", result[1].nameStr)
+            assertEquals("surnameTest2", result[1].surname)
+            assertNull(result[1].ageStr)
+        }
+
+        @Test // TODO: Delete if repeated
+        fun `test maps`() {
+            val person = mapOf(
+                "0" to Person(23, "nameTest1", "surnameTest1", 87),
+                "1" to Person(24, "nameTest2", "surnameTest2", 88),
+            )
+
+            val result = person.mapTo<Map<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            assertNotNull(result)
+
+            assertEquals(2, result.size)
+
+            assertEquals("nameTest1", result["0"]?.nameStr)
+            assertEquals("surnameTest1", result["0"]?.surname)
+            assertNull(result["0"]?.ageStr)
+            assertEquals("nameTest2", result["1"]?.nameStr)
+            assertEquals("surnameTest2", result["1"]?.surname)
+            assertNull(result["1"]?.ageStr)
+        }
+
+        @Test // TODO: Delete if repeated
+        fun `test pair`() {
+            val person = "0" to Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<Pair<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            assertNotNull(result)
+
+            assertEquals("0", result.first)
+            assertEquals("nameTest", result.second.nameStr)
+            assertEquals("surnameTest", result.second.surname)
+            assertNull(result.second.ageStr)
+        }
+
+        @Test // TODO: Delete if repeated
+        fun `test triple`() {
+            val person = Triple("0", 5, Person(23, "nameTest", "surnameTest", 87))
+
+            val result = person.mapTo<Triple<String, Long, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            assertNotNull(result)
+
+            assertEquals("0", result.first)
+            assertEquals(5, result.second)
+            assertEquals("nameTest", result.third.nameStr)
+            assertEquals("surnameTest", result.third.surname)
+            assertNull(result.third.ageStr)
+        }
+
+        @Test // TODO: Delete if repeated
+        fun `test composite origin entity to non-composite target class`() {
+            val person = Triple("0", 5, Person(23, "nameTest", "surnameTest", 87))
+
+            val result = person.mapTo<String>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            // The mapper cannot map a composite original entity to a non-composite target class
+            assertNull(result)
         }
 
 //        @Test

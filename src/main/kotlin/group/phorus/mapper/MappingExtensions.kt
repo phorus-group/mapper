@@ -11,15 +11,18 @@ inline fun <reified T: Any> Any.mapTo(
     functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
     ignoreMapFromAnnotations: Boolean = false,
     useSettersOnly: Boolean = false,
+    mapPrimitives: Boolean = true,
 ): T? = mapTo(
-    originalEntity = OriginalEntity(this, this::class.starProjectedType /* TODO: Check that doesn't cause problems*/),
+    originalEntity = OriginalEntity(this, this::class.starProjectedType),
     targetType = typeOf<T>(),
     exclusions = exclusions,
     mappings = mappings,
     functionMappings = functionMappings,
     ignoreMapFromAnnotations = ignoreMapFromAnnotations,
     useSettersOnly = useSettersOnly,
+    mapPrimitives = mapPrimitives,
 ) as T?
+
 
 /**
  *
@@ -37,11 +40,36 @@ fun mapTo(
     functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
     ignoreMapFromAnnotations: Boolean = false,
     useSettersOnly: Boolean = false,
+    mapPrimitives: Boolean = true,
 ): Any? {
+    // If the original entity value is null, return null
+    if (originalEntity.value == null)
+        return null
+
+    // Remove the nullability from the original type
+    originalEntity.type = originalEntity.type.let {
+        it.classifier?.createType(
+            arguments = it.arguments,
+            nullable = false,
+            annotations = it.annotations,
+        ) ?: it
+    }
+
+    // If the target type and the original entity type are supertypes or the same type as iterable, map, pair,
+    //  or triple, try to map them
+    val mappedComposite = mapComposite(targetType, originalEntity, exclusions, mappings,
+        functionMappings, ignoreMapFromAnnotations, useSettersOnly, mapPrimitives)
+    if (mappedComposite != null)
+        return mappedComposite.value
+
+    // If the target type and the original entity type are primitives, try to map them
+    val mappedPrimitive = mapPrimitives(targetType, originalEntity, mapPrimitives)
+    if (mappedPrimitive != null)
+        return mappedPrimitive.value
+
+
     // Format the exclusion locations
     val fieldExclusions = exclusions.map { parseLocation(it).joinToString("/") }
-
-    // TODO: use the KType to validate: typeOf<Collection<*>>().isSuperTypeOf(kType), the same for Map and for Pair and Triple
     val targetClass = TargetClass(targetType.classifier as KClass<*>)
     val baseEntity = baseObject?.let { OriginalEntity(it, targetType) }
 
@@ -211,30 +239,42 @@ fun mapTo(
     }
 }
 
-// checkear target type y original type:
-//  - si el target type es number y el original type no es number:
-//    - si es string y mapprimitives es = true utilizar to Float o similar, si no devolver null
-//    - si no es string devolver null
-//  - si el target type es string y el original type no es string:
-//    - si es number y mapprimitives es = true utilizar toString, si no devolver null
-//    - si no es number devolver null
-//  - si ambos son number o string mappear directamente
-
-private fun processPrimitives(
+/**
+ * Maps primitive types if possible
+ *
+ * @param targetType the target type
+ * @param originalEntity the original entity
+ * @param mapPrimitives boolean to enable the mapping between string and number primitives
+ * @return null if the target type and the original entity are not primitives, else a property wrapper with containing
+ *  the mapped value or null in case mapping is not possible
+ */
+private fun mapPrimitives(
     targetType: KType,
     originalEntity: OriginNodeInterface<*>,
-    mapPrimitives: Boolean = true,
+    mapPrimitives: Boolean,
 ): PropertyWrapper<Any?>? {
-    if ((targetType != typeOf<String>() && targetType != typeOf<Number>())
-        && (originalEntity.type != typeOf<String>() && originalEntity.type != typeOf<Number>()))
-        return null
+    // If target type is a primitive
+    if (targetType.isSubtypeOf(typeOf<String>()) || targetType.isSubtypeOf(typeOf<Number>())) {
+        // But the original entity type is not a primitive, the value can't be mapped, so return null
+        if (!originalEntity.type.isSubtypeOf(typeOf<String>()) && !originalEntity.type.isSubtypeOf(typeOf<Number>()))
+            return PropertyWrapper(null)
+    } else { // If the target type is not a primitive
+        // If the original entity type is also not a primitive, return null
+        //  to continue the mapTo function, since the values could be mapped
+        return if (!originalEntity.type.isSubtypeOf(typeOf<String>()) && !originalEntity.type.isSubtypeOf(typeOf<Number>())) {
+            null
+        } else PropertyWrapper(null)
+        // If the original type is not a primitive, the value can't be mapped, so return null
+    }
 
     if (!mapPrimitives) PropertyWrapper(null)
 
-    if (targetType == typeOf<String>() && originalEntity.type == typeOf<String>())
+    // If the types are String, return the value directly
+    if (targetType.isSubtypeOf(typeOf<String>()) && originalEntity.type.isSubtypeOf(typeOf<String>()))
         return PropertyWrapper(originalEntity.value)
 
-    if (targetType == typeOf<Number>() && originalEntity.type == typeOf<Number>()) {
+    // If the types are Number, return the value mapped with the native function
+    if (targetType.isSubtypeOf(typeOf<Number>()) && originalEntity.type.isSubtypeOf(typeOf<Number>())) {
         val value: Number? = when (targetType) {
             typeOf<Double>() -> (originalEntity.value as Number).toDouble()
             typeOf<Float>() -> (originalEntity.value as Number).toFloat()
@@ -246,4 +286,206 @@ private fun processPrimitives(
         }
         return value?.let { PropertyWrapper(it) }
     }
+
+    if (targetType.isSubtypeOf(typeOf<Number>()) && originalEntity.type.isSubtypeOf(typeOf<String>())) {
+        val value: Number? = try { when (targetType) {
+            typeOf<Double>() -> (originalEntity.value as String).toDouble()
+            typeOf<Float>() -> (originalEntity.value as String).toFloat()
+            typeOf<Long>() -> (originalEntity.value as String).toLong()
+            typeOf<Int>() -> (originalEntity.value as String).toInt()
+            typeOf<Short>() -> (originalEntity.value as String).toShort()
+            typeOf<Byte>() -> (originalEntity.value as String).toByte()
+            else -> null
+        }} catch (_: Exception) { null }
+        return value?.let { PropertyWrapper(it) }
+    }
+
+    if (targetType.isSubtypeOf(typeOf<String>()) && originalEntity.type.isSubtypeOf(typeOf<Number>()))
+        return PropertyWrapper(originalEntity.value.toString())
+
+    return PropertyWrapper(null)
+}
+
+/**
+ * Map composite classes, if possible
+ *
+ * @param targetType the target type
+ * @param originalEntity the original entity
+ * @return null if the target type and the original entity type aren't supertypes of iterable, map, pair, or triple.
+ *  Else, return a property wrapper containing the mapped values or null in case mapping is not possible
+ */
+private fun mapComposite(
+    targetType: KType,
+    originalEntity: OriginNodeInterface<*>,
+    exclusions: List<TargetField> = emptyList(),
+    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
+    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
+    ignoreMapFromAnnotations: Boolean,
+    useSettersOnly: Boolean,
+    mapPrimitives: Boolean,
+): PropertyWrapper<Any?>? {
+
+    // If the target type and original type are not both supertypes or the same type as iterable, map, pair,
+    //  or triple, return null
+    if ((!typeOf<Iterable<*>>().isSupertypeOf(targetType) && !typeOf<Iterable<*>>().isSupertypeOf(originalEntity.type))
+        && (!typeOf<Map<*, *>>().isSupertypeOf(targetType) && !typeOf<Map<*, *>>().isSupertypeOf(originalEntity.type))
+        && (!typeOf<Pair<*, *>>().isSupertypeOf(targetType) && !typeOf<Pair<*, *>>().isSupertypeOf(originalEntity.type))
+        && (!typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && !typeOf<Triple<*, *, *>>().isSupertypeOf(originalEntity.type)))
+        return null
+
+
+    // If the target type and original type are both supertypes or the same type as iterable, map each item
+    if (typeOf<Iterable<*>>().isSupertypeOf(targetType) && typeOf<Iterable<*>>().isSupertypeOf(originalEntity.type)) {
+        val subTargetType = targetType.arguments.first().type ?: return null
+
+        return (originalEntity.value as Iterable<*>).mapNotNull { item ->
+            item?.let {
+                val subOriginalType = it::class.starProjectedType
+
+                mapTo(
+                    originalEntity = OriginalEntity(it, subOriginalType),
+                    targetType = subTargetType,
+                    exclusions = exclusions,
+                    mappings = mappings,
+                    functionMappings = functionMappings,
+                    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                    useSettersOnly = useSettersOnly,
+                    mapPrimitives = mapPrimitives,
+                )
+            }
+        }.let { value -> PropertyWrapper(value) }
+    }
+
+    // If the target type and original type are both supertypes or the same type as map, map each item
+    if (typeOf<Map<*, *>>().isSupertypeOf(targetType) && typeOf<Map<*, *>>().isSupertypeOf(originalEntity.type)) {
+        val subTargetType = targetType.arguments
+
+        return (originalEntity.value as Map<*, *>).map { (key, item) ->
+            val keyTargetType = subTargetType[0].type ?: return null
+            val itemTargetType = subTargetType[1].type ?: return null
+
+            key?.let {
+                val subOriginalType = it::class.starProjectedType
+
+                mapTo(
+                    originalEntity = OriginalEntity(it, subOriginalType),
+                    targetType = keyTargetType,
+                    exclusions = exclusions,
+                    mappings = mappings,
+                    functionMappings = functionMappings,
+                    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                    useSettersOnly = useSettersOnly,
+                    mapPrimitives = mapPrimitives,
+                )
+            } to item?.let {
+                val subOriginalType = it::class.starProjectedType
+
+                mapTo(
+                    originalEntity = OriginalEntity(it, subOriginalType),
+                    targetType = itemTargetType,
+                    exclusions = exclusions,
+                    mappings = mappings,
+                    functionMappings = functionMappings,
+                    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                    useSettersOnly = useSettersOnly,
+                    mapPrimitives = mapPrimitives,
+                )
+            }
+        }.toMap().let { value -> PropertyWrapper(value) }
+    }
+
+    // If the target type and original type are both supertypes or the same type as pair, map each item
+    if (typeOf<Pair<*, *>>().isSupertypeOf(targetType) && typeOf<Pair<*, *>>().isSupertypeOf(originalEntity.type)) {
+        val subTargetType = targetType.arguments
+
+        return (originalEntity.value as Pair<*, *>).let { (first, second) ->
+            val firstTargetType = subTargetType[0].type ?: return null
+            val secondTargetType = subTargetType[1].type ?: return null
+
+            first?.let {
+                val subOriginalType = it::class.starProjectedType
+
+                mapTo(
+                    originalEntity = OriginalEntity(it, subOriginalType),
+                    targetType = firstTargetType,
+                    exclusions = exclusions,
+                    mappings = mappings,
+                    functionMappings = functionMappings,
+                    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                    useSettersOnly = useSettersOnly,
+                    mapPrimitives = mapPrimitives,
+                )
+            } to second?.let {
+                val subOriginalType = it::class.starProjectedType
+
+                mapTo(
+                    originalEntity = OriginalEntity(it, subOriginalType),
+                    targetType = secondTargetType,
+                    exclusions = exclusions,
+                    mappings = mappings,
+                    functionMappings = functionMappings,
+                    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                    useSettersOnly = useSettersOnly,
+                    mapPrimitives = mapPrimitives,
+                )
+            }
+        }.let { value -> PropertyWrapper(value) }
+    }
+
+    // If the target type and original type are both supertypes or the same type as triple, map each item
+    if (typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && typeOf<Triple<*, *, *>>().isSupertypeOf(originalEntity.type)) {
+        val subTargetType = targetType.arguments
+
+        return (originalEntity.value as Triple<*, *, *>).let { (first, second, third) ->
+            val firstTargetType = subTargetType[0].type ?: return null
+            val secondTargetType = subTargetType[1].type ?: return null
+            val thirdTargetType = subTargetType[2].type ?: return null
+
+            Triple(
+                first?.let {
+                    val subOriginalType = it::class.starProjectedType
+
+                    mapTo(
+                        originalEntity = OriginalEntity(it, subOriginalType),
+                        targetType = firstTargetType,
+                        exclusions = exclusions,
+                        mappings = mappings,
+                        functionMappings = functionMappings,
+                        ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                        useSettersOnly = useSettersOnly,
+                        mapPrimitives = mapPrimitives,
+                    )},
+                second?.let {
+                val subOriginalType = it::class.starProjectedType
+
+                mapTo(
+                    originalEntity = OriginalEntity(it, subOriginalType),
+                    targetType = secondTargetType,
+                    exclusions = exclusions,
+                    mappings = mappings,
+                    functionMappings = functionMappings,
+                    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                    useSettersOnly = useSettersOnly,
+                    mapPrimitives = mapPrimitives,
+                )},
+                third?.let {
+                    val subOriginalType = it::class.starProjectedType
+
+                    mapTo(
+                        originalEntity = OriginalEntity(it, subOriginalType),
+                        targetType = thirdTargetType,
+                        exclusions = exclusions,
+                        mappings = mappings,
+                        functionMappings = functionMappings,
+                        ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+                        useSettersOnly = useSettersOnly,
+                        mapPrimitives = mapPrimitives,
+                    )},
+            )
+        }.let { value -> PropertyWrapper(value) }
+    }
+
+    // If target type is composite but original type is not, or vice versa, we cannot map the values,
+    //  return property value null
+    return PropertyWrapper(null)
 }

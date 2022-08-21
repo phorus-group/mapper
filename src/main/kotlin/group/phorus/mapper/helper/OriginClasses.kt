@@ -14,7 +14,7 @@ interface OriginNodeInterface<T> {
     val parent: OriginNodeInterface<*>?
         get() = null
 
-    val type: KType
+    var type: KType
     var value: Any?
     val properties: Map<String, OriginNode<T, *>>
 
@@ -53,7 +53,7 @@ interface OriginNodeInterface<T> {
  */
 class OriginalEntity<T: Any>(
     value: T,
-    override val type: KType,
+    override var type: KType,
 ) : OriginNodeInterface<T> {
 
     override var value: Any? = value
@@ -76,8 +76,8 @@ class OriginNode<T, B>(
     property: KProperty<B>,
 ) : OriginNodeInterface<B> {
 
-    override val type: KType by lazy { property.returnType }
-    override var value: Any? = property.getter.call(parent.value)
+    override var type: KType = property.returnType
+    override var value: Any? = try { property.getter.call(parent.value) } catch (_: Exception) { null }
 
     /**
      * Sub properties, null if value is null
