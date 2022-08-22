@@ -1,7 +1,11 @@
 package group.phorus.mapper
 
-import kotlin.reflect.*
-import kotlin.reflect.full.*
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
+import kotlin.reflect.full.isSubtypeOf
+import kotlin.reflect.full.isSupertypeOf
+import kotlin.reflect.full.starProjectedType
+import kotlin.reflect.typeOf
 
 inline fun <reified T: Any> T.updateFrom(
     entity: Any,
@@ -351,11 +355,11 @@ private fun mapComposite(
     // If the target type and original type are not both supertypes or the same type as iterable, map, pair,
     //  or triple, return null
     if ((!typeOf<Iterable<*>>().isSupertypeOf(targetType) && !typeOf<Iterable<*>>().isSupertypeOf(originalEntity.type))
+        && (!typeOf<Array<*>>().isSupertypeOf(targetType) && !typeOf<Array<*>>().isSupertypeOf(originalEntity.type))
         && (!typeOf<Map<*, *>>().isSupertypeOf(targetType) && !typeOf<Map<*, *>>().isSupertypeOf(originalEntity.type))
         && (!typeOf<Pair<*, *>>().isSupertypeOf(targetType) && !typeOf<Pair<*, *>>().isSupertypeOf(originalEntity.type))
         && (!typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && !typeOf<Triple<*, *, *>>().isSupertypeOf(originalEntity.type)))
         return null
-
 
     // If the target type and original type are both supertypes or the same type as iterable, map each item
     if (typeOf<Iterable<*>>().isSupertypeOf(targetType) && typeOf<Iterable<*>>().isSupertypeOf(originalEntity.type)) {
@@ -376,7 +380,13 @@ private fun mapComposite(
                     mapPrimitives = mapPrimitives,
                 )
             }
-        }.let { value -> PropertyWrapper(value) }
+        }.let { value ->
+            val finalValue: Any = if (typeOf<Set<*>>().isSupertypeOf(targetType)) {
+                value.toSet()
+            } else value
+
+            PropertyWrapper(finalValue)
+        }
     }
 
     // If the target type and original type are both supertypes or the same type as map, map each item

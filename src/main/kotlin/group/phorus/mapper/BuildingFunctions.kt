@@ -4,6 +4,7 @@ import kotlin.reflect.*
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.starProjectedType
 
 /**
  * Creates a new entity based on another already existing one, useful when you want to use a base entity, but you don't
@@ -83,8 +84,6 @@ fun buildOrUpdate(
         val property = prop.key
 
         // If the property already have the desired value, only happens if a based class is being used
-        val tmp = property.getter.call(builtObject) == prop.value
-        val tmp2 = property.getter.call(builtObject) === prop.value
         if (property.getter.call(builtObject) == prop.value || property.getter.call(builtObject) === prop.value)
             return@forEach
 
@@ -192,11 +191,7 @@ fun buildWithConstructor(
                 }
             } else {
                 // Save the property and its value if the param and prop have the same types
-                val propValueType = prop.value!!::class.qualifiedName
-                val paramValueType = param.type.toString().replace("?", "")
-
-                // If the prop value and the setter have the same type, use the setter
-                if (propValueType == paramValueType)
+                if (prop.value!!::class.starProjectedType.isSupertypeOf(param.type))
                     params[param] = PropertyWrapper(prop.value)
             }
         }

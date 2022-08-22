@@ -61,8 +61,8 @@ class OriginalEntity<T: Any>(
     /**
      * Entity properties
      */
-    override val properties: Map<String, OriginNode<T, *>> = value::class.memberProperties
-        .associate { prop -> prop.name to OriginNode(this, prop) }
+    override val properties: Map<String, OriginNode<T, *>> by lazy { value::class.memberProperties
+        .associate { prop -> prop.name to OriginNode(this, prop) } }
 }
 
 /**

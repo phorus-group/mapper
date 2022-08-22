@@ -1,6 +1,8 @@
 package group.phorus.mapper
 
-import group.phorus.mapper.model.*
+import group.phorus.mapper.model.Person
+import group.phorus.mapper.model.PersonDTO
+import group.phorus.mapper.model.PersonWAnnotationDTO
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -80,12 +82,12 @@ internal class MappingExtensionsTest {
 
         @Test // TODO: Delete if repeated
         fun `test collections`() {
-            val person = listOf(
+            val persons = listOf(
                 Person(23, "nameTest1", "surnameTest1", 87),
                 Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result = person.mapTo<List<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = persons.mapTo<List<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
             assertNotNull(result)
 
@@ -100,13 +102,48 @@ internal class MappingExtensionsTest {
         }
 
         @Test // TODO: Delete if repeated
+        fun `test collections with sets`() {
+            val persons = setOf(
+                Person(23, "nameTest1", "surnameTest1", 87),
+                Person(24, "nameTest2", "surnameTest2", 88),
+            )
+
+            val result = persons.mapTo<Set<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+                ?.toList()
+
+            assertNotNull(result)
+
+            assertEquals(2, result.size)
+
+            assertEquals("nameTest1", result[0].nameStr)
+            assertEquals("surnameTest1", result[0].surname)
+            assertNull(result[0].ageStr)
+            assertEquals("nameTest2", result[1].nameStr)
+            assertEquals("surnameTest2", result[1].surname)
+            assertNull(result[1].ageStr)
+        }
+
+        @Test // TODO: Delete if repeated
+        fun `test collections with arrays - not supported`() {
+            val persons = arrayOf(
+                Person(23, "nameTest1", "surnameTest1", 87),
+                Person(24, "nameTest2", "surnameTest2", 88),
+            )
+
+            val result = persons.mapTo<Array<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+
+            // Arrays are not supported, avoid using them
+            assertNull(result)
+        }
+
+        @Test // TODO: Delete if repeated
         fun `test maps`() {
-            val person = mapOf(
+            val persons = mapOf(
                 "0" to Person(23, "nameTest1", "surnameTest1", 87),
                 "1" to Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result = person.mapTo<Map<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = persons.mapTo<Map<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
             assertNotNull(result)
 
