@@ -1,4 +1,4 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty

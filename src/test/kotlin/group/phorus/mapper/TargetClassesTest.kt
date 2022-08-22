@@ -1,7 +1,5 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
-import group.phorus.mapper.MapFrom
-import group.phorus.mapper.enums.MappingFallback
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
@@ -10,14 +8,14 @@ import kotlin.test.assertNotNull
 
 internal class TargetClassesTest {
 
-    data class Pet(
+    private data class Pet(
         @field:MapFrom(["../name"], MappingFallback.NULL)
         val petName: String,
         val petAge: Int,
         val breed: String?
     )
 
-    data class Person(
+    private data class Person(
         val name: String,
         val age: Int,
         val pet: Pet,

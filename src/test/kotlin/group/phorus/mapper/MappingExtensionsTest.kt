@@ -1,15 +1,9 @@
 package group.phorus.mapper
 
-import group.phorus.mapper.enums.MappingFallback
-import group.phorus.mapper.helper.PropertyWrapper
 import group.phorus.mapper.model.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import java.lang.reflect.Type
-import kotlin.reflect.full.*
-import kotlin.reflect.jvm.javaType
-import kotlin.reflect.typeOf
 import kotlin.test.assertNotNull
 
 // TODO: Add updateFrom method to replace the "baseObject" property in the mapTo function
@@ -39,23 +33,6 @@ internal class MappingExtensionsTest {
             assertNull(result.ageStr)
         }
 
-        // TODO: Change the test to use the new updateFrom method
-//        @Test
-//        fun `update some properties of an object using another one as a base`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//            val personDTO = PersonDTO(surname = "surnameTest2")
-//
-//            val result = personDTO.mapTo(baseObject = person)
-//
-//            assertNotNull(result)
-//
-//            // The mapper will use a base object and update its properties
-//            assertEquals(23, result.id)
-//            assertEquals("nameTest", result.name)
-//            assertEquals("surnameTest2", result.surname)
-//            assertEquals(87, result.age)
-//        }
-//
         @Test
         fun `map from one object to another ignoring a property`() {
             val person = Person(23, "nameTest", "surnameTest", 87)

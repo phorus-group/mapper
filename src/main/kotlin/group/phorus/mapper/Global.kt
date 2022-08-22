@@ -1,4 +1,4 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
 typealias Field = String
 typealias OriginalField = Field

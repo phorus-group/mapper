@@ -1,4 +1,4 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test

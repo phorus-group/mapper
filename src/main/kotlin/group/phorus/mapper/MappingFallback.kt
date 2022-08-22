@@ -1,4 +1,4 @@
-package group.phorus.mapper.enums
+package group.phorus.mapper
 
 enum class MappingFallback {
     NULL, CONTINUE

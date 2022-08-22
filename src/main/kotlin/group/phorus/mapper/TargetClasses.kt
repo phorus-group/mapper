@@ -1,6 +1,5 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
-import group.phorus.mapper.MapFrom
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType

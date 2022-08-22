@@ -1,4 +1,4 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
 import org.junit.jupiter.api.Test
 
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Nested
 @Suppress("UNUSED", "UNUSED_PARAMETER", "ClassName")
 internal class BuildingFunctionsTest {
 
-    class BuildTestClasses {
+    private class BuildTestClasses {
 
         // Test constructor 1
         data class Person(var name: String, var surname: String, var age: Int, var sex: Boolean) {

@@ -1,7 +1,7 @@
 package group.phorus.mapper.model
 
 import group.phorus.mapper.MapFrom
-import group.phorus.mapper.enums.MappingFallback
+import group.phorus.mapper.MappingFallback
 
 
 /**

@@ -1,4 +1,4 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -20,7 +20,7 @@ internal class MappingFunctionsTest {
     }
 
 
-    class MappingTestClasses {
+    private class MappingTestClasses {
         class Person(
             val name: String,
             val age: Int,
@@ -568,7 +568,7 @@ internal class MappingFunctionsTest {
             targetClass = targetClass<MappingTestClasses.Pet>(),
             mappings = mapOf(
                 "breed" to ({ br: MappingTestClasses.Breed ->
-                    MappingTestClasses.Breed(breedName = br.breedName.uppercase()) 
+                    MappingTestClasses.Breed(breedName = br.breedName.uppercase())
                 } to ("breed" to ProcessMappingFallback.NULL)),
             ),
             exclusions = emptyList(),

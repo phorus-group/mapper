@@ -1,7 +1,5 @@
-package group.phorus.mapper.helper
+package group.phorus.mapper
 
-import group.phorus.mapper.enums.MappingFallback
-import group.phorus.mapper.mapTo
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.isSupertypeOf
