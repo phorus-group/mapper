@@ -77,7 +77,7 @@ class OriginNode<T, B>(
 ) : OriginNodeInterface<B> {
 
     override var type: KType = property.returnType
-    override var value: Any? = try { property.getter.call(parent.value) } catch (_: Exception) { null }
+    override var value: Any? = runCatching { property.getter.call(parent.value) }.getOrNull()
 
     /**
      * Sub properties, null if value is null

@@ -70,13 +70,7 @@ fun mapTo(
         return null
 
     // Remove the nullability from the original type
-    originalEntity.type = originalEntity.type.let {
-        it.classifier?.createType(
-            arguments = it.arguments,
-            nullable = false,
-            annotations = it.annotations,
-        ) ?: it
-    }
+    originalEntity.type = originalEntity.type.removeNullability()
 
     // If the target type and the original entity type are supertypes or the same type as iterable, map, pair,
     //  or triple, try to map them
@@ -160,12 +154,6 @@ fun mapTo(
             }
         }
 
-        // TODO: Seguir implementando updateFrom desde aca para abajo
-        //  - Si hay un base entity, en caso que el updateoption sea ignore_null, en caso que mappings, function
-        //    mappings y default mappings devuelvan un value null, utilizar la propiedad del base entity
-        //  - Si hay un base entity y updateoption es set_null, en caso que mappings, function mappings y default
-        //    mappings devuelvan value null, setearlo, en caso que no devuelvan null utilizar el value de la base entity
-        //  - A la hora de construir el objeto, se tendra una lista de propiedades que incluyen
         if (prop == null) {
             var value: Any? = null
             // If the target property wasn't excluded or mapped until this point, look for the value in the original entity
@@ -183,7 +171,7 @@ fun mapTo(
                 }
             }
 
-            prop = if (value == null && baseEntity?.second != UpdateOption.IGNORE_NULLS) {
+            prop = if (value == null && baseEntity?.second != UpdateOption.SET_NULLS) {
                 null
             } else PropertyWrapper(value)
         }
@@ -253,7 +241,7 @@ fun mapTo(
                     baseEntity = newBaseEntity
                 )
             }
-        } else prop?.value ?: return@forEach
+        } else prop.let { it ?: return@forEach }.value
 
         props[targetFieldName] = finalProp
     }
@@ -323,7 +311,7 @@ private fun mapPrimitives(
     }
 
     if (targetType.isSubtypeOf(typeOf<Number>()) && originalEntity.type.isSubtypeOf(typeOf<String>())) {
-        val value: Number? = try { when (targetType) {
+        val value: Number? = runCatching { when (targetType) {
             typeOf<Double>() -> (originalEntity.value as String).toDouble()
             typeOf<Float>() -> (originalEntity.value as String).toFloat()
             typeOf<Long>() -> (originalEntity.value as String).toLong()
@@ -331,7 +319,7 @@ private fun mapPrimitives(
             typeOf<Short>() -> (originalEntity.value as String).toShort()
             typeOf<Byte>() -> (originalEntity.value as String).toByte()
             else -> null
-        }} catch (_: Exception) { null }
+        }}.getOrNull()
         return value?.let { PropertyWrapper(it) }
     }
 

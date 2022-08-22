@@ -193,6 +193,23 @@ internal class MappingExtensionsTest {
             assertEquals(87, result.age)
         }
 
+        @Test // TODO: Delete if repeated
+        fun `test update from with update option set_nulls`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+            val person2 = Person(name = "nameTest2")
+
+            val result = person.updateFrom(person2, UpdateOption.SET_NULLS)
+
+            assertNotNull(result)
+
+            assertTrue(result === person)
+
+            assertNull(result.id)
+            assertEquals("nameTest2", result.name)
+            assertNull(result.surname)
+            assertNull(result.age)
+        }
+
         // TODO: Create compound tests for the last 2 tests
 
 //        @Test

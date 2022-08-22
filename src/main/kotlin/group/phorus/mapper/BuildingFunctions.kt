@@ -2,6 +2,7 @@ package group.phorus.mapper
 
 import kotlin.reflect.*
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.memberProperties
 
 /**
@@ -78,35 +79,31 @@ fun buildOrUpdate(
     if (builtObject == null)
         return null
 
-    kProperties
-        .forEach { prop ->
-            val property = prop.key
+    kProperties.forEach { prop ->
+        val property = prop.key
 
-            // If the property already have the desired value, only happens if a based class is being used
-            if (property.getter.call(builtObject) == prop.value || property.getter.call(builtObject) === prop.value)
+        // If the property already have the desired value, only happens if a based class is being used
+        val tmp = property.getter.call(builtObject) == prop.value
+        val tmp2 = property.getter.call(builtObject) === prop.value
+        if (property.getter.call(builtObject) == prop.value || property.getter.call(builtObject) === prop.value)
+            return@forEach
+
+        // If the property is not mutable it doesn't have any setters, return
+        if (property !is KMutableProperty<*>)
+            return@forEach
+
+        if (prop.value == null) {
+            // If the prop value is null and the setter is not nullable, return, if not, use the setter
+            if (!property.returnType.isMarkedNullable) {
                 return@forEach
-
-            // If the property is not mutable it doesn't have any setters, return
-            if (property !is KMutableProperty<*>)
-                return@forEach
-
-            val propertyType = property.setter.parameters.first().type
-            if (prop.value == null) {
-                // If the prop value is null and the setter is not nullable, return, if not, use the setter
-                if (!propertyType.isMarkedNullable) {
-                    return@forEach
-                } else {
-                    property.setter.call(builtObject, prop.value)
-                }
-            }
-
-            val propValueType = prop.value!!::class.qualifiedName
-            val propertyValueType = property.returnType.toString().replace("?", "")
-
-            // If the prop value and the setter have the same type, use the setter
-            if (propValueType == propertyValueType)
+            } else {
                 property.setter.call(builtObject, prop.value)
+                return@forEach
+            }
         }
+
+        runCatching { property.setter.call(builtObject, prop.value) }
+    }
 
     return builtObject
 }
@@ -225,14 +222,12 @@ fun buildWithConstructor(
     constructorParams = constructorParams.filter { it.value != null || !it.key.isOptional }
 
     // Create the object using the saved constructor and matched params
-    val builtObject = try {
+    val builtObject = runCatching {
         val args = constructorParams.map { it.key to it.value?.value }.associate { it }
         constructor?.callBy(args) ?: (type.classifier as KClass<*>).createInstance()
-    } catch (e: Exception) {
-        // If the constructor is null because the object doesn't have one, and the createInstance() fails because
-        //  the object doesn't have a no args constructor, return a null object
-        null
-    }
+    }.getOrNull()
+    // If the constructor is null because the object doesn't have one, and the createInstance() fails because
+    //  the object doesn't have a no args constructor, return a null object
 
     // Get the properties that couldn't be set with the constructor
     // Get a list of used param names

@@ -80,13 +80,7 @@ fun processMappings(
                 } else {
                     // Make the original prop type non-nullable, since we already check that the original
                     //  property value is not null
-                    val originalValueType = originalProp.type.let { type ->
-                        type.classifier?.createType(
-                            arguments = type.arguments,
-                            nullable = false,
-                            annotations = type.annotations,
-                        ) ?: type
-                    }
+                    val originalValueType = originalProp.type.removeNullability()
 
                     // If the target prop type is not a supertype or the same type as the original value type, then
                     //  map the value
@@ -167,7 +161,7 @@ private fun processFunction(
 
     // If the function has more than 1 param, return the exit value
     val functionParam = (function.reflect()?.parameters
-        ?: try { (function as KFunction<*>).parameters } catch (_: Exception) { null })
+        ?: runCatching { (function as KFunction<*>).parameters }.getOrNull())
         .let {
             if (it == null || it.size > 1)
                 return@mapProp exitValue
@@ -177,9 +171,9 @@ private fun processFunction(
     // Get the function input type
     val inputType = functionParam?.type
 
-    val retType = function.reflect()?.returnType
-    // If it's null, try to get process the function as a KFunction
-        ?: try { (function as KFunction<*>).returnType } catch (_: Exception) { null }
+    val returnType = function.reflect()?.returnType?.removeNullability()
+        // If it's null, try to get process the function as a KFunction
+        ?: runCatching { (function as KFunction<*>).returnType }.getOrNull()?.removeNullability()
         // If the output type is null we cannot go further, return the exit value
         ?: return@mapProp exitValue
 
@@ -187,20 +181,9 @@ private fun processFunction(
     if (originalProp?.value == null && functionParam?.isOptional == false && !functionParam.type.isMarkedNullable)
         return@mapProp exitValue
 
-    // If the original prop type is nullable, but the original prop value is not null, remove the
-    //  nullability of the type
+    // If the original prop value is not null, remove the nullability of the type
     val originalPropType = originalProp?.value?.let {
-        val type = originalProp.type
-        if (type.isMarkedNullable) {
-            // Then remove the nullability of the function return type
-            type.classifier?.createType(
-                arguments = type.arguments,
-                nullable = false,
-                annotations = type.annotations,
-            ) ?: type
-        } else {
-            type
-        }
+        originalProp.type.removeNullability()
     }
 
     // If the function input type is not a supertype or the same type as the original property, then
@@ -212,7 +195,7 @@ private fun processFunction(
     }
 
     // Call the function and save the returned value
-    val returnValue = try {
+    val returnValue = runCatching {
         PropertyWrapper(
             // If the function param is null
             if (inputProp == null) {
@@ -240,7 +223,7 @@ private fun processFunction(
                 (function as Function0<*>).invoke()
             }
         )
-    } catch (_: Exception) {
+    }.getOrElse {
         // If the function throws an exception we cannot go further, return the exit value
         return@mapProp exitValue
     }
@@ -250,16 +233,6 @@ private fun processFunction(
         if (targetField.type.isMarkedNullable) {
             return@mapProp PropertyWrapper<Any?>(null)
         } else return@mapProp null
-
-    // The function returned value cannot be null at this point, so remove the nullability of the function
-    //  return type
-    val returnType = retType.let { type ->
-        type.classifier?.createType(
-            arguments = type.arguments,
-            nullable = false,
-            annotations = type.annotations,
-        ) ?: type
-    }
 
     // If the target prop type is not a supertype or the same type as the function return
     //  type, then map the returned value
