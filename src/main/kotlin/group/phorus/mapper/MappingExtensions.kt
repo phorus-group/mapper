@@ -445,7 +445,9 @@ private fun mapProperties(
                 for (location in targetField.value.mapFrom!!.locations) {
                     val mapFromProp = originalEntity.findProperty(parseLocation(location))
                     if (mapFromProp != null) {
-                        mapFromValue = mapFromProp
+                        mapFromValue = mapFromProp.apply {
+                            if (value != null) type = type.removeNullability()
+                        }
                     }
                 }
                 mapFromValue
@@ -473,7 +475,7 @@ private fun mapProperties(
 
             if (originalProp.value != null) {
                 // If the target field is the same type or a supertype of the original property, use that property
-                value = if (targetField.value.type.isSupertypeOf(originalProp.type)) {
+                value = if (targetField.value.type.isSupertypeOf(originalProp.type.removeNullability())) {
                     originalProp.value
                 } else {
                     // If not, map it
