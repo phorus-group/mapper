@@ -191,7 +191,7 @@ fun buildWithConstructor(
                 }
             } else {
                 // Save the property and its value if the param and prop have the same types
-                if (prop.value!!::class.starProjectedType.isSupertypeOf(param.type))
+                if (prop.value!!::class.starProjectedType.isSupertypeOf(param.type.removeNullability()))
                     params[param] = PropertyWrapper(prop.value)
             }
         }

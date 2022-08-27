@@ -1,9 +1,8 @@
 package group.phorus.mapper
 
-import org.junit.jupiter.api.Test
-
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
 
 @Suppress("UNUSED", "UNUSED_PARAMETER", "ClassName")
 internal class BuildingFunctionsTest {

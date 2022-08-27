@@ -7,11 +7,6 @@ import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
 /**
- * Utility function to use TargetClass with a reified class type
- */
-inline fun <reified T: Any> targetClass() = TargetClass(T::class)
-
-/**
  * Target classes common interface, provides a function to search a specific property in the entire tree
  * @param T the contained class type
  */
@@ -42,7 +37,7 @@ interface TargetNodeInterface<T> {
  * @param T class type
  * @param clazz class
  */
-class TargetClass<T: Any>(clazz: KClass<T>) : TargetNodeInterface<T> {
+class TargetClass<T: Any>(clazz: KClass<T>, val type: KType) : TargetNodeInterface<T> {
 
     /**
      * Class properties

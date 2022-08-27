@@ -2,9 +2,15 @@ package group.phorus.mapper
 
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.typeOf
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+
+/**
+ * Utility function to use TargetClass with a reified class type
+ */
+inline fun <reified T: Any> targetClass() = TargetClass(T::class, T::class.starProjectedType)
 
 internal class TargetClassesTest {
 
