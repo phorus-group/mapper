@@ -8,10 +8,11 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
-// TODO: Add updateFrom method to replace the "baseObject" property in the mapTo function
+// TODO:
 //  Add a test checking that mappings and custom mappings don't work if the field is excluded
 //  Support vararg params
 //  Add a performance test comparing the mapping speed of the library with jackson convertValue function
+//  Add subfield tests and subfield exclusion tests
 
 @Suppress("ClassName")
 internal class MappingExtensionsTest {
@@ -404,65 +405,90 @@ internal class MappingExtensionsTest {
         }
     }
 
-//        @Test
-//        fun `map from one object to another manually mapping a nonexistent property`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
+    @Nested
+    inner class `Test manual mappings` {
+
+        @Test
+        fun `map from one object to another manually mapping a property`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<PersonDTO>(
+                mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)),
+            )
+
+            assertNotNull(result)
+
+            assertEquals("nameTest", result.nameStr)
+            assertEquals("surnameTest", result.surname)
+        }
+
+        @Test
+        fun `map from one object to another manually mapping a property with a function`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val parseManually : (Int) -> String = {
+                (it + 5).toString()
+            }
+
+            val result = person.mapTo<PersonDTO>(
+                functionMappings = mapOf("age" to (parseManually to ("ageStr" to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+
+            // The property contains the returned value of the function
+            assertEquals("92", result.ageStr)
+
+            assertEquals("surnameTest", result.surname)
+        }
+
+        @Test
+        fun `map from one object to another manually mapping a property - test mapping priorities`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val parseManually : (String) -> String = {
+                it + "_test"
+            }
+
+            val result = person.mapTo<PersonDTO>(
+                mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)),
+                functionMappings = mapOf("name" to (parseManually to ("nameStr" to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+
+            // The property contains the returned value of the function, since it has priority
+            assertEquals("nameTest_test", result.nameStr)
+            assertEquals("surnameTest", result.surname)
+        }
+
+        @Test
+        fun `map from one object to another manually mapping a property with exclusions`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val parseManually : (String) -> String = {
+                it + "_test"
+            }
+
+            val result = person.mapTo<PersonDTO>(
+                exclusions = listOf("nameStr"),
+                mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)),
+                functionMappings = mapOf("name" to (parseManually to ("nameStr" to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+
+            // The property is null, because exclusions have priority over everything
+            assertNull(result.nameStr)
+            assertEquals("surnameTest", result.surname)
+        }
+    }
+
+
 //
-//            val result = person.mapTo(PersonDTO::class, mappings = mapOf("abcdef" to "nameStr"))
-//
-//            assertNotNull(result)
-//
-//            // If the mapper cannot map the original property to the target one, it will leave it as null
-//            assertNull(result.nameStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
-//        @Test
-//        fun `map from one object to another manually mapping a property with a function`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            // The function uses the original property as input, and puts the returned value in the target property
-//            val parseManually : (Int) -> String = {
-//                (it + 5).toString()
-//            }
-//
-//            val result = person.mapTo(
-//                PersonDTO::class,
-//                customMappings = mapOf("age" to (parseManually to "ageStr")),
-//            )
-//
-//            assertNotNull(result)
-//
-//            // The property contains the returned value of the function
-//            assertEquals("92", result.ageStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
-//        // TODO: Add 2 tests testing the custom mapping functions mapping automatically
-//        //  the input and output of the function correctly
-//        @Test
-//        fun `map from one object to another manually mapping an original property with a function using the wrong input type`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val parseManually : (Int) -> String = {
-//                (it + 5).toString()
-//            }
-//
-//            val result = person.mapTo(
-//                PersonDTO::class,
-//                customMappings = mapOf("name" to (parseManually to "ageStr")),
-//            )
-//
-//            assertNotNull(result)
-//
-//            // If the mapper cannot automatically map the input of the function to the expected one,
-//            //  it will leave the target property as null
-//            assertNull(result.ageStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
 //
 //        @Test
 //        fun `map from one object to another manually mapping a target property with a function using the wrong output type`() {
