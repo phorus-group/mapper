@@ -40,6 +40,7 @@ dependencies {
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
 }
 
 // Jacoco config

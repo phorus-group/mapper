@@ -1,5 +1,8 @@
 package group.phorus.mapper
 
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.module.kotlin.convertValue
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import group.phorus.mapper.MappingExtensionsTest.TestClasses.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
@@ -59,6 +62,117 @@ internal class MappingExtensionsTest {
             var hotelRooms: Set<Room>,
             var numberOfGuests: Int,
         )
+    }
+
+    @Nested
+    inner class `Test performance` {
+        private inline fun<T> time(function: () -> T): Pair<T, Long> {
+            val startTime = System.currentTimeMillis()
+            val result: T = function.invoke()
+            val endTime = System.currentTimeMillis()
+
+            return Pair(result, endTime - startTime)
+        }
+
+        @Test
+        fun `mapper performance - normal mapping`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val mapperResult = time { person.mapTo<PersonDTO>() }
+
+            assertNotNull(mapperResult.first)
+            assertEquals("surnameTest", mapperResult.first?.surname)
+
+            println("Mapper time: ${mapperResult.second}")
+
+            // Results:
+            // Mapper time: 777
+            // Mapper time: 916
+            // Mapper time: 908
+            // Mapper time: 784
+
+            // Average: 846.25
+        }
+
+        @Test
+        fun `jackson performance - normal mapping`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val jacksonResult = time {
+                jacksonObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .convertValue<PersonDTO>(person)
+            }
+
+            assertNotNull(jacksonResult.first)
+            assertEquals("surnameTest", jacksonResult.first.surname)
+
+            println("Jackson time: ${jacksonResult.second}")
+
+            // Results:
+            // Jackson time: 1237
+            // Jackson time: 1257
+            // Jackson time: 1303
+            // Jackson time: 1100
+
+            // Average: 1224.25
+        }
+
+        // Performance improvement over jackson - normal mapping: 44%~
+
+        @Test
+        fun `mapper performance - compound mapping`() {
+            val room = Room(
+                guest = Person(23, "nameTest", "surnameTest", 88),
+                roomName = "roomNameTest",
+            )
+
+            val mapperResult = time { room.mapTo<RoomDTO>() }
+
+            assertNotNull(mapperResult.first)
+            assertNotNull(mapperResult.first?.guest)
+            assertEquals("roomNameTest", mapperResult.first?.roomName)
+            assertEquals("surnameTest", mapperResult.first?.guest?.surname)
+
+            println("Mapper time: ${mapperResult.second}")
+
+            // Results:
+            // Mapper time: 930
+            // Mapper time: 898
+            // Mapper time: 1019
+            // Mapper time: 794
+
+            // Average: 910.25
+        }
+
+        @Test
+        fun `jackson performance - compound mapping`() {
+            val room = Room(
+                guest = Person(23, "nameTest", "surnameTest", 88),
+                roomName = "roomNameTest",
+            )
+
+            val jacksonResult = time {
+                jacksonObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .convertValue<RoomDTO>(room)
+            }
+
+            assertNotNull(jacksonResult.first)
+            assertNotNull(jacksonResult.first.guest)
+            assertEquals("roomNameTest", jacksonResult.first.roomName)
+            assertEquals("surnameTest", jacksonResult.first.guest.surname)
+
+            println("Jackson time: ${jacksonResult.second}")
+
+            // Results:
+            // Jackson time: 1114
+            // Jackson time: 1151
+            // Jackson time: 1490
+            // Jackson time: 1392
+
+            // Average: 1286.75
+        }
+
+        // Performance improvement over jackson - compound mapping: 41%~
     }
 
     @Nested
@@ -1020,6 +1134,5 @@ internal class MappingExtensionsTest {
     // TODO:
     //  - Add map from tests with locations from parent objects too
     //  - Add subexclusions and submappings tests
-    //  - Add a performance test comparing the mapping speed of the library with jackson convertValue function
     }
 }
