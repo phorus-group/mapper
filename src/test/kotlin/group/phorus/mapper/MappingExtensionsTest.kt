@@ -13,10 +13,11 @@ import kotlin.test.assertNotNull
 //  Support vararg params
 //  Add a performance test comparing the mapping speed of the library with jackson convertValue function
 
+@Suppress("ClassName")
 internal class MappingExtensionsTest {
 
     @Nested
-    inner class `Normal tests` {
+    inner class `Test normal mappings` {
 
         @Test
         fun `map from one object to another`() {
@@ -77,11 +78,77 @@ internal class MappingExtensionsTest {
 
             assertEquals("surnameTest", result.surname)
         }
+    }
 
-        // TODO: Test native mappings: string to int/long/etc; int/long/etc to string; int to long, double to int, etc
+    @Nested
+    inner class `Test natives` {
 
-        @Test // TODO: Delete if repeated
-        fun `test collections`() {
+        @Test
+        fun `map from a string to other string`() {
+            val result = "10".mapTo<String>()
+
+            assertNotNull(result)
+
+            // The property doesn't need mapping
+            assertEquals("10", result)
+        }
+
+        @Test
+        fun `map from a string to other string - disable map primitives`() {
+            val result = "10".mapTo<String>(mapPrimitives = false)
+
+            assertNotNull(result)
+
+            // The property doesn't need mapping
+            assertEquals("10", result)
+        }
+
+        @Test
+        fun `map from an int to other int`() {
+            val result = 10.mapTo<Int>()
+
+            assertNotNull(result)
+
+            // The property doesn't need mapping
+            assertEquals(10, result)
+        }
+
+        @Test
+        fun `map from an int to other int - disable map primitives`() {
+            val result = 10.mapTo<Int>(mapPrimitives = false)
+
+            assertNotNull(result)
+
+            // The property doesn't need mapping
+            assertEquals(10, result)
+        }
+
+        @Test
+        fun `map from an int to a double`() {
+            val result = 10.mapTo<Double>()
+
+            assertNotNull(result)
+
+            // The property is mapped to an int
+            assertEquals(10.0, result)
+        }
+
+        @Test
+        fun `map from a string to an int`() {
+            val result = "10".mapTo<Int>()
+
+            assertNotNull(result)
+
+            // The property is mapped to an int
+            assertEquals(10, result)
+        }
+    }
+
+    @Nested
+    inner class `Test composites` {
+
+        @Test
+        fun `map from a list of objects to another`() {
             val persons = listOf(
                 Person(23, "nameTest1", "surnameTest1", 87),
                 Person(24, "nameTest2", "surnameTest2", 88),
@@ -101,8 +168,8 @@ internal class MappingExtensionsTest {
             assertNull(result[1].ageStr)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test collections with sets`() {
+        @Test
+        fun `map from a set of objects to another`() {
             val persons = setOf(
                 Person(23, "nameTest1", "surnameTest1", 87),
                 Person(24, "nameTest2", "surnameTest2", 88),
@@ -123,27 +190,29 @@ internal class MappingExtensionsTest {
             assertNull(result[1].ageStr)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test collections with arrays - not supported`() {
+        @Test
+        fun `try to map from an array of objects to another - not supported`() {
             val persons = arrayOf(
                 Person(23, "nameTest1", "surnameTest1", 87),
                 Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result = persons.mapTo<Array<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result =
+                persons.mapTo<Array<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
             // Arrays are not supported, avoid using them
             assertNull(result)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test maps`() {
+        @Test
+        fun `map from a map of objects to another`() {
             val persons = mapOf(
                 "0" to Person(23, "nameTest1", "surnameTest1", 87),
                 "1" to Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result = persons.mapTo<Map<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result =
+                persons.mapTo<Map<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
             assertNotNull(result)
 
@@ -157,11 +226,12 @@ internal class MappingExtensionsTest {
             assertNull(result["1"]?.ageStr)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test pair`() {
+        @Test
+        fun `map from a pair of objects to another`() {
             val person = "0" to Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo<Pair<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result =
+                person.mapTo<Pair<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
             assertNotNull(result)
 
@@ -171,11 +241,12 @@ internal class MappingExtensionsTest {
             assertNull(result.second.ageStr)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test triple`() {
+        @Test
+        fun `map from a triple to another`() {
             val person = Triple("0", 5, Person(23, "nameTest", "surnameTest", 87))
 
-            val result = person.mapTo<Triple<String, Long, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result =
+                person.mapTo<Triple<String, Long, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
             assertNotNull(result)
 
@@ -186,18 +257,24 @@ internal class MappingExtensionsTest {
             assertNull(result.third.ageStr)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test composite origin entity to non-composite target class`() {
+        @Test
+        fun `try to map a composite to a type that isn't the same as the original entity`() {
             val person = Triple("0", 5, Person(23, "nameTest", "surnameTest", 87))
 
-            val result = person.mapTo<String>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = person.mapTo<List<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
 
-            // The mapper cannot map a composite original entity to a non-composite target class
+            // If the original entity is a composite, the mapper cannot map it to a different composite type
+            // For example: you can map List<Person> to List<PersonDTO>, but you cannot map List<Person>
+            //  to Pair<String, PersonDTO>
             assertNull(result)
         }
+    }
 
-        @Test // TODO: Delete if repeated
-        fun `test update from`() {
+    @Nested
+    inner class `Test update from function` {
+
+        @Test
+        fun `update an object from another object`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
             val person2 = Person(name = "nameTest2")
 
@@ -205,16 +282,17 @@ internal class MappingExtensionsTest {
 
             assertNotNull(result)
 
+            // The result is still the same instance
             assertTrue(result === person)
 
             assertEquals(23, result.id)
-            assertEquals("nameTest2", result.name)
+            assertEquals("nameTest2", result.name) // Only the name field was updated
             assertEquals("surnameTest", result.surname)
             assertEquals(87, result.age)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test update from without setters only`() {
+        @Test
+        fun `update an object from another object with setters only = false`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
             val person2 = Person(name = "nameTest2")
 
@@ -222,16 +300,17 @@ internal class MappingExtensionsTest {
 
             assertNotNull(result)
 
+            // The result is no longer the same instance, since it was built using a constructor
             assertTrue(result != person)
 
             assertEquals(23, result.id)
-            assertEquals("nameTest2", result.name)
+            assertEquals("nameTest2", result.name) // Only the name field was updated
             assertEquals("surnameTest", result.surname)
             assertEquals(87, result.age)
         }
 
-        @Test // TODO: Delete if repeated
-        fun `test update from with update option set_nulls`() {
+        @Test
+        fun `update an object from another object with the update option set_nulls`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
             val person2 = Person(name = "nameTest2")
 
@@ -239,15 +318,91 @@ internal class MappingExtensionsTest {
 
             assertNotNull(result)
 
+            // The result is still the same instance
             assertTrue(result === person)
 
+            // Since we are using the SET_NULL options, nulls are no longer ignored thus every field is updated
             assertNull(result.id)
             assertEquals("nameTest2", result.name)
             assertNull(result.surname)
             assertNull(result.age)
         }
 
-        // TODO: Create compound tests for the last 2 tests
+        @Test
+        fun `update a collection of objects from another object`() {
+            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
+            val person2 = Person(name = "nameTest2")
+
+            val result = persons.updateFrom(person2)
+
+            assertNotNull(result)
+
+            // The result list still has the same instances
+            assertTrue(result.first() === persons.first())
+
+            assertEquals(23, result.first().id)
+            assertEquals("nameTest2", result.first().name) // Only the name field was updated
+            assertEquals("surnameTest", result.first().surname)
+            assertEquals(87, result.first().age)
+        }
+
+        @Test
+        fun `update a collection of objects from another collection`() {
+            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
+            val person2 = listOf(Person(name = "nameTest2"))
+
+            val result = persons.updateFrom(person2)
+
+            assertNotNull(result)
+
+            // The result list still has the same instances
+            assertTrue(result.first() === persons.first())
+
+            assertEquals(23, result.first().id)
+
+            // The mapper doesn't update collections of objects from other collections, because it makes no sense
+            assertEquals("nameTest", result.first().name)
+            assertEquals("surnameTest", result.first().surname)
+            assertEquals(87, result.first().age)
+        }
+
+        @Test
+        fun `update a collection of objects from another object with setters only = false`() {
+            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
+            val person2 = Person(name = "nameTest2")
+
+            val result = persons.updateFrom(person2, useSettersOnly = false)
+
+            assertNotNull(result)
+
+            // The result list doesn't have the same instances, since it was built using a constructor
+            assertTrue(result.first() != persons.first())
+
+            assertEquals(23, result.first().id)
+            assertEquals("nameTest2", result.first().name) // Only the name field was updated
+            assertEquals("surnameTest", result.first().surname)
+            assertEquals(87, result.first().age)
+        }
+
+        @Test
+        fun `update a collection of objects from another object with the update option set_nulls`() {
+            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
+            val person2 = Person(name = "nameTest2")
+
+            val result = persons.updateFrom(person2, UpdateOption.SET_NULLS)
+
+            assertNotNull(result)
+
+            // The result list still has the same instances
+            assertTrue(result.first() === persons.first())
+
+            // Since we are using the SET_NULL options, nulls are no longer ignored thus every field is updated
+            assertNull(result.first().id)
+            assertEquals("nameTest2", result.first().name)
+            assertNull(result.first().surname)
+            assertNull(result.first().age)
+        }
+    }
 
 //        @Test
 //        fun `map from one object to another manually mapping a nonexistent property`() {
@@ -395,7 +550,7 @@ internal class MappingExtensionsTest {
 //            assertEquals("nameTest", result.nameStr)
 //            assertEquals("92", result.ageStr)
 //        }
-    }
+//    }
 
 //
 //    @Nested

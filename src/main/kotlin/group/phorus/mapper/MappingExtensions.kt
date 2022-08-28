@@ -17,7 +17,7 @@ inline fun <reified T: Any> T.updateFrom(
     useSettersOnly: Boolean = true,
     mapPrimitives: Boolean = true,
 ): T? = mapTo(
-    originalEntity = OriginalEntity(entity, this::class.starProjectedType),
+    originalEntity = OriginalEntity(entity, entity::class.starProjectedType),
     targetType = typeOf<T>(),
     baseEntity = this to updateOption,
     exclusions = exclusions,
@@ -78,8 +78,31 @@ fun mapTo(
 
     // If the target type and the original entity type are supertypes or the same type as iterable, map, pair,
     //  or triple, try to map them
-    val mappedComposite = mapComposite(targetType, originalEntity, exclusions, mappings,
-        functionMappings, ignoreMapFromAnnotations, useSettersOnly, mapPrimitives)
+    val mappedComposite = if (baseEntity != null) {
+        // If base entity is not null, use it instead of the original entity, and use the original entity as base
+        mapComposite(
+            originalEntity = OriginalEntity(baseEntity.first, targetType),
+            targetType = targetType,
+            baseEntity = originalEntity.value!! to baseEntity.second,
+            exclusions = exclusions,
+            mappings = mappings,
+            functionMappings = functionMappings,
+            ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+            useSettersOnly = useSettersOnly,
+            mapPrimitives = mapPrimitives
+        )
+    } else {
+        mapComposite(
+            originalEntity = originalEntity,
+            targetType = targetType,
+            exclusions = exclusions,
+            mappings = mappings,
+            functionMappings = functionMappings,
+            ignoreMapFromAnnotations = ignoreMapFromAnnotations,
+            useSettersOnly = useSettersOnly,
+            mapPrimitives = mapPrimitives
+        )
+    }
     if (mappedComposite != null)
         return mappedComposite.value
 
@@ -223,8 +246,9 @@ private fun mapPrimitives(
  *  Else, return a property wrapper containing the mapped values or null in case mapping is not possible
  */
 private fun mapComposite(
-    targetType: KType,
     originalEntity: OriginNodeInterface<*>,
+    targetType: KType,
+    baseEntity: Pair<Any, UpdateOption>? = null,
     exclusions: List<TargetField> = emptyList(),
     mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
     functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
@@ -250,8 +274,9 @@ private fun mapComposite(
                 val subOriginalType = it::class.starProjectedType
 
                 mapTo(
-                    originalEntity = OriginalEntity(it, subOriginalType),
+                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                     targetType = subTargetType,
+                    baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -283,6 +308,7 @@ private fun mapComposite(
                 mapTo(
                     originalEntity = OriginalEntity(it, subOriginalType),
                     targetType = keyTargetType,
+                    baseEntity = baseEntity,
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -296,6 +322,7 @@ private fun mapComposite(
                 mapTo(
                     originalEntity = OriginalEntity(it, subOriginalType),
                     targetType = itemTargetType,
+                    baseEntity = baseEntity,
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -321,6 +348,7 @@ private fun mapComposite(
                 mapTo(
                     originalEntity = OriginalEntity(it, subOriginalType),
                     targetType = firstTargetType,
+                    baseEntity = baseEntity,
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -334,6 +362,7 @@ private fun mapComposite(
                 mapTo(
                     originalEntity = OriginalEntity(it, subOriginalType),
                     targetType = secondTargetType,
+                    baseEntity = baseEntity,
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -361,6 +390,7 @@ private fun mapComposite(
                     mapTo(
                         originalEntity = OriginalEntity(it, subOriginalType),
                         targetType = firstTargetType,
+                        baseEntity = baseEntity,
                         exclusions = exclusions,
                         mappings = mappings,
                         functionMappings = functionMappings,
@@ -374,6 +404,7 @@ private fun mapComposite(
                 mapTo(
                     originalEntity = OriginalEntity(it, subOriginalType),
                     targetType = secondTargetType,
+                    baseEntity = baseEntity,
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -387,6 +418,7 @@ private fun mapComposite(
                     mapTo(
                         originalEntity = OriginalEntity(it, subOriginalType),
                         targetType = thirdTargetType,
+                        baseEntity = baseEntity,
                         exclusions = exclusions,
                         mappings = mappings,
                         functionMappings = functionMappings,
