@@ -1,8 +1,6 @@
 package group.phorus.mapper
 
-import group.phorus.mapper.model.Person
-import group.phorus.mapper.model.PersonDTO
-import group.phorus.mapper.model.PersonWAnnotationDTO
+import group.phorus.mapper.model.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -38,10 +36,25 @@ internal class MappingExtensionsTest {
         }
 
         @Test
-        fun `map from one object to another ignoring a property`() {
+        fun `map from one object to another ignoring a property name`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo<PersonDTO>(exclusions = listOf("surname"))
+            val result = person.mapToClass<PersonDTO>(exclusions = listOf("surname"))
+
+            assertNotNull(result)
+
+            // Because of the exclusion, the property is null even if it has the same name as a property in the original object
+            assertNull(result.surname)
+
+            assertNull(result.nameStr)
+            assertNull(result.ageStr)
+        }
+
+        @Test
+        fun `map from one object to another ignoring a property`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+            
+            val result = person.mapTo<PersonDTO>(exclusions = listOf(PersonDTO::surname))
 
             assertNotNull(result)
 
@@ -56,7 +69,7 @@ internal class MappingExtensionsTest {
         fun `map from one object to another manually mapping a property`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo<PersonDTO>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = person.mapTo<PersonDTO>(mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL)))
 
             assertNotNull(result)
 
@@ -70,7 +83,7 @@ internal class MappingExtensionsTest {
         fun `map from one object to another manually mapping a property with the wrong type`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo<PersonDTO>(mappings = mapOf("age" to ("nameStr" to MappingFallback.NULL)))
+            val result = person.mapTo<PersonDTO>(mappings = mapOf(Person::age to (PersonDTO::nameStr to MappingFallback.NULL)))
 
             assertNotNull(result)
 
@@ -82,7 +95,7 @@ internal class MappingExtensionsTest {
     }
 
     @Nested
-    inner class `Test natives` {
+    inner class `Test primitives` {
 
         @Test
         fun `map from a string to other string`() {
@@ -155,7 +168,9 @@ internal class MappingExtensionsTest {
                 Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result = persons.mapTo<List<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = persons.mapTo<List<PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
 
             assertNotNull(result)
 
@@ -170,13 +185,41 @@ internal class MappingExtensionsTest {
         }
 
         @Test
+        fun `map from a list of objects to another with a function`() {
+            val persons = listOf(
+                Person(23, "nameTest1", "surnameTest1", 87),
+                Person(24, "nameTest2", "surnameTest2", 88),
+            )
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val parseManually : (Int) -> String = {
+                (it + 5).toString()
+            }
+
+            val result = persons.mapTo<List<PersonDTO>>(
+                functionMappings = mapOf(Person::age to (parseManually to (PersonDTO::ageStr to MappingFallback.NULL)))
+            )
+
+            assertNotNull(result)
+
+            assertEquals(2, result.size)
+
+            assertEquals("92", result[0].ageStr)
+            assertEquals("surnameTest1", result[0].surname)
+            assertEquals("93", result[1].ageStr)
+            assertEquals("surnameTest2", result[1].surname)
+        }
+
+        @Test
         fun `map from a set of objects to another`() {
             val persons = setOf(
                 Person(23, "nameTest1", "surnameTest1", 87),
                 Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result = persons.mapTo<Set<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = persons.mapTo<Set<PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
                 ?.toList()
 
             assertNotNull(result)
@@ -198,8 +241,9 @@ internal class MappingExtensionsTest {
                 Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result =
-                persons.mapTo<Array<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = persons.mapTo<Array<PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
 
             // Arrays are not supported, avoid using them
             assertNull(result)
@@ -212,8 +256,9 @@ internal class MappingExtensionsTest {
                 "1" to Person(24, "nameTest2", "surnameTest2", 88),
             )
 
-            val result =
-                persons.mapTo<Map<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = persons.mapTo<Map<String, PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
 
             assertNotNull(result)
 
@@ -231,8 +276,9 @@ internal class MappingExtensionsTest {
         fun `map from a pair of objects to another`() {
             val person = "0" to Person(23, "nameTest", "surnameTest", 87)
 
-            val result =
-                person.mapTo<Pair<String, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = person.mapTo<Pair<String, PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
 
             assertNotNull(result)
 
@@ -246,8 +292,9 @@ internal class MappingExtensionsTest {
         fun `map from a triple to another`() {
             val person = Triple("0", 5, Person(23, "nameTest", "surnameTest", 87))
 
-            val result =
-                person.mapTo<Triple<String, Long, PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = person.mapTo<Triple<String, Long, PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
 
             assertNotNull(result)
 
@@ -262,7 +309,9 @@ internal class MappingExtensionsTest {
         fun `try to map a composite to a type that isn't the same as the original entity`() {
             val person = Triple("0", 5, Person(23, "nameTest", "surnameTest", 87))
 
-            val result = person.mapTo<List<PersonDTO>>(mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)))
+            val result = person.mapTo<List<PersonDTO>>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL))
+            )
 
             // If the original entity is a composite, the mapper cannot map it to a different composite type
             // For example: you can map List<Person> to List<PersonDTO>, but you cannot map List<Person>
@@ -409,16 +458,51 @@ internal class MappingExtensionsTest {
     inner class `Test manual mappings` {
 
         @Test
-        fun `map from one object to another manually mapping a property`() {
+        fun `map from one object to another manually mapping a property name`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
-            val result = person.mapTo<PersonDTO>(
+            val result = person.mapToClass<PersonDTO>(
                 mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)),
             )
 
             assertNotNull(result)
 
             assertEquals("nameTest", result.nameStr)
+            assertEquals("surnameTest", result.surname)
+        }
+
+        @Test
+        fun `map from one object to another manually mapping a property`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<PersonDTO>(
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL)),
+            )
+
+            assertNotNull(result)
+
+            assertEquals("nameTest", result.nameStr)
+            assertEquals("surnameTest", result.surname)
+        }
+
+        @Test
+        fun `map from one object to another manually mapping a property name with a function`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val parseManually : (Int) -> String = {
+                (it + 5).toString()
+            }
+
+            val result = person.mapToClass<PersonDTO>(
+                functionMappings = mapOf("age" to (parseManually to ("ageStr" to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+
+            // The property contains the returned value of the function
+            assertEquals("92", result.ageStr)
+
             assertEquals("surnameTest", result.surname)
         }
 
@@ -432,7 +516,7 @@ internal class MappingExtensionsTest {
             }
 
             val result = person.mapTo<PersonDTO>(
-                functionMappings = mapOf("age" to (parseManually to ("ageStr" to MappingFallback.NULL))),
+                functionMappings = mapOf(Person::age to (parseManually to (PersonDTO::ageStr to MappingFallback.NULL))),
             )
 
             assertNotNull(result)
@@ -453,8 +537,8 @@ internal class MappingExtensionsTest {
             }
 
             val result = person.mapTo<PersonDTO>(
-                mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)),
-                functionMappings = mapOf("name" to (parseManually to ("nameStr" to MappingFallback.NULL))),
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL)),
+                functionMappings = mapOf(Person::name to (parseManually to (PersonDTO::nameStr to MappingFallback.NULL))),
             )
 
             assertNotNull(result)
@@ -474,9 +558,9 @@ internal class MappingExtensionsTest {
             }
 
             val result = person.mapTo<PersonDTO>(
-                exclusions = listOf("nameStr"),
-                mappings = mapOf("name" to ("nameStr" to MappingFallback.NULL)),
-                functionMappings = mapOf("name" to (parseManually to ("nameStr" to MappingFallback.NULL))),
+                exclusions = listOf(PersonDTO::nameStr),
+                mappings = mapOf(Person::name to (PersonDTO::nameStr to MappingFallback.NULL)),
+                functionMappings = mapOf(Person::name to (parseManually to (PersonDTO::nameStr to MappingFallback.NULL))),
             )
 
             assertNotNull(result)
@@ -487,229 +571,77 @@ internal class MappingExtensionsTest {
         }
     }
 
+    @Nested
+    inner class `Compound tests` {
 
-//
-//
-//        @Test
-//        fun `map from one object to another manually mapping a target property with a function using the wrong output type`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val parseManually : (Int) -> Int = {
-//                it + 5
-//            }
-//
-//            val result = person.mapTo(
-//                PersonDTO::class,
-//                customMappings = mapOf("age" to (parseManually to "ageStr")),
-//            )
-//
-//            assertNotNull(result)
-//
-//            // If the mapper cannot automatically map the output of the function to the expected one,
-//            //  it will leave the target property as null
-//            assertNull(result.ageStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
-//        @Test
-//        fun `map from one object to another manually mapping a nonexistent property with a function`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val parseManually : (Int) -> String = {
-//                (it + 5).toString()
-//            }
-//
-//            val result = person.mapTo(
-//                PersonDTO::class,
-//                customMappings = mapOf("abcdef" to (parseManually to "ageStr")),
-//            )
-//
-//            assertNotNull(result)
-//
-//            // If the mapper cannot map the original property to the target one, it will leave it as null
-//            assertNull(result.ageStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
-//        @Test
-//        fun `map from one object to another manually mapping a property with a function and without a function at the same time`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val parseManually : (String) -> String = {
-//                it.uppercase()
-//            }
-//
-//            val result = person.mapTo(
-//                PersonDTO::class,
-//                mappings = mapOf("name" to "nameStr"),
-//                customMappings = mapOf("name" to (parseManually to "nameStr")),
-//            )
-//
-//            assertNotNull(result)
-//
-//            // The customMappings field has priority over the normal mappings
-//            assertEquals("NAMETEST", result.nameStr)
-//
-//            assertEquals("surnameTest", result.surname)
-//        }
-//
-//        @Test
-//        fun `map from one object to another manually mapping a property with a function, other one without a function, and excluding one property`() {
-//            val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//            val parseManually : (Int) -> String = {
-//                (it + 5).toString()
-//            }
-//
-//            val result = person.mapTo(
-//                PersonDTO::class,
-//                exclusions = listOf("surname"),
-//                mappings = mapOf("name" to "nameStr"),
-//                customMappings = mapOf("age" to (parseManually to "ageStr")),
-//            )
-//
-//            assertNotNull(result)
-//
-//            assertNull(result.surname)
-//            assertEquals("nameTest", result.nameStr)
-//            assertEquals("92", result.ageStr)
-//        }
-//    }
+        @Test
+        fun `map from one compound object to another`() {
+            val room = Room(
+                guest = Person(23, "nameTest", "surnameTest"),
+                roomName = "roomNameTest",
+            )
 
-//
-//    @Nested
-//    inner class `Compound tests` {
-//
-//        @Test
-//        fun `map from one compound object to another`() {
-//            val room = Room(
-//                guest = Person(23, "nameTest", "surnameTest"),
-//                roomName = "roomNameTest",
-//            )
-//
-//            val result = room.mapTo(RoomDTO::class)
-//
-//            assertNotNull(result)
-//            assertNotNull(result.guest)
-//
-//            // The mapper will try to map any non-native properties automatically
-//            assertEquals("roomNameTest", result.roomName)
-//            assertEquals("surnameTest", result.guest!!.surname)
-//        }
-//
-//        @Test
-//        fun `map from one double compound object to another`() {
-//            val wifi = Wifi(
-//                room = Room(
-//                    guest = Person(23, "nameTest", "surnameTest"),
-//                    roomName = "roomNameTest",
-//                ),
-//                wifiPassword = 12,
-//            )
-//
-//            val result = wifi.mapTo(WifiDTO::class)
-//
-//            assertNotNull(result)
-//            assertNotNull(result.room)
-//            assertNotNull(result.room!!.guest)
-//
-//            // The mapper works recursively, so properties of properties will also be mapped
-//            assertEquals(12, result.wifiPassword)
-//            assertEquals("roomNameTest", result.room!!.roomName)
-//            assertEquals("surnameTest", result.room!!.guest!!.surname)
-//        }
-//
-//        // TODO: implement and test a function to be executed inside a prop, like "room.guest.age" to "room.guest.age",
-//        //  "room.guest.age" to "room.roomName" and "room.roomName" to "room.guest.name"
-//        @Test
-//        fun `map from one double compound object to another with a function`() {
-//            val wifi = Wifi(
-//                room = Room(
-//                    guest = Person(23, "nameTest", "surnameTest"),
-//                    roomName = "roomNameTest",
-//                ),
-//                wifiPassword = 12,
-//            )
-//
-//            val addFiveToInt : (Int) -> Int = {
-//                it + 5
-//            }
-//
-//            val result = wifi.mapTo(
-//                WifiDTO::class,
-//                customMappings = mapOf("wifiPassword" to (addFiveToInt to "wifiPassword")),
-//            )
-//
-//            assertNotNull(result)
-//            assertNotNull(result.room)
-//            assertNotNull(result.room!!.guest)
-//
-//            assertEquals(17, result.wifiPassword)
-//            assertEquals("roomNameTest", result.room!!.roomName)
-//            assertEquals("surnameTest", result.room!!.guest!!.surname)
-//        }
-//    }
-//
-//
-//    @Nested
-//    inner class `Collection tests` {
-//
-//        @Test
-//        fun `map from one object with a collection to another`() {
-//            val user = User(
-//                addresses = listOf(
-//                    "addr1",
-//                    "addr2",
-//                ),
-//                age = 12,
-//            )
-//
-//            val result = user.mapTo(UserDTO::class)
-//
-//            assertNotNull(result)
-//            assertNotNull(result.addresses)
-//
-//            // The mapper will map all the items of any collection automatically
-//            assertEquals(2, result.addresses!!.size)
-//            assertEquals("addr1", result.addresses!!.toList()[0] as String)
-//            assertEquals("addr2", result.addresses!!.toList()[1] as String)
-//
-//            assertEquals(12, result.age)
-//        }
-//
-//        @Test
-//        fun `map from one object with a collection of objects to another with a function`() {
-//            val hotel = Hotel(
-//                hotelRooms = setOf(
-//                    Room(Person(23, "nameTest", "surnameTest"), "roomName1"),
-//                    Room(Person(25, "nameTest2", "surnameTest2"), "roomName2"),
-//                ),
-//                numberOfGuests = 2,
-//            )
-//
-//            val addFiveToInt : (Int) -> Int = {
-//                it + 5
-//            }
-//
-//            val result = hotel.mapTo(
-//                HotelDTO::class,
-//                customMappings = mapOf("numberOfGuests" to (addFiveToInt to "numberOfGuests")),
-//            )
-//
-//            assertNotNull(result)
-//            assertNotNull(result.hotelRooms)
-//
-//            // The mapper will map all the items of any collection automatically
-//            assertEquals(2, result.hotelRooms!!.size)
-//            assertEquals("roomName1", result.hotelRooms!![0].roomName)
-//            assertEquals("surnameTest", result.hotelRooms!![0].guest?.surname)
-//            assertEquals("roomName2", result.hotelRooms!![1].roomName)
-//            assertEquals("surnameTest2", result.hotelRooms!![1].guest?.surname)
-//
-//            assertEquals(7, result.numberOfGuests)
-//        }
+            val result = room.mapTo<RoomDTO>()
+
+            assertNotNull(result)
+            assertNotNull(result.guest)
+
+            // The mapper will try to map any properties automatically
+            assertEquals("roomNameTest", result.roomName)
+            assertEquals("surnameTest", result.guest!!.surname)
+        }
+
+        @Test
+        fun `map from one double compound object to another`() {
+            val wifi = Wifi(
+                room = Room(
+                    guest = Person(23, "nameTest", "surnameTest"),
+                    roomName = "roomNameTest",
+                ),
+                wifiPassword = 12,
+            )
+
+            val result = wifi.mapTo<WifiDTO>()
+
+            assertNotNull(result)
+            assertNotNull(result.room)
+            assertNotNull(result.room!!.guest)
+
+            // The mapper works recursively, so properties of properties will also be mapped
+            assertEquals(12, result.wifiPassword)
+            assertEquals("roomNameTest", result.room!!.roomName)
+            assertEquals("surnameTest", result.room!!.guest!!.surname)
+        }
+
+        @Test
+        fun `map from one double compound object to another with a function`() {
+            val wifi = Wifi(
+                room = Room(
+                    guest = Person(23, "nameTest", "surnameTest"),
+                    roomName = "roomNameTest",
+                ),
+                wifiPassword = 12,
+            )
+
+            val addFiveToInt : (Int) -> Int = {
+                it + 5
+            }
+
+            val result = wifi.mapTo<WifiDTO>(
+                functionMappings = mapOf(Wifi::wifiPassword to (addFiveToInt to (WifiDTO::wifiPassword to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+            assertNotNull(result.room)
+            assertNotNull(result.room!!.guest)
+
+            assertEquals(17, result.wifiPassword)
+            assertEquals("roomNameTest", result.room!!.roomName)
+            assertEquals("surnameTest", result.room!!.guest!!.surname)
+        }
+    }
+
+
 //
 //        @Test
 //        fun `map from one object to another with a function returning a collection that needs to be automatically mapped`() {

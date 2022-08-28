@@ -7,46 +7,6 @@ import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.typeOf
 
-inline fun <reified T: Any> T.updateFrom(
-    entity: Any,
-    updateOption: UpdateOption = UpdateOption.IGNORE_NULLS,
-    exclusions: List<TargetField> = emptyList(),
-    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
-    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
-    ignoreMapFromAnnotations: Boolean = false,
-    useSettersOnly: Boolean = true,
-    mapPrimitives: Boolean = true,
-): T? = mapTo(
-    originalEntity = OriginalEntity(entity, entity::class.starProjectedType),
-    targetType = typeOf<T>(),
-    baseEntity = this to updateOption,
-    exclusions = exclusions,
-    mappings = mappings,
-    functionMappings = functionMappings,
-    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
-    useSettersOnly = useSettersOnly,
-    mapPrimitives = mapPrimitives,
-) as T?
-
-inline fun <reified T: Any> Any.mapTo(
-    exclusions: List<TargetField> = emptyList(),
-    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
-    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
-    ignoreMapFromAnnotations: Boolean = false,
-    useSettersOnly: Boolean = false,
-    mapPrimitives: Boolean = true,
-): T? = mapTo(
-    originalEntity = OriginalEntity(this, this::class.starProjectedType),
-    targetType = typeOf<T>(),
-    exclusions = exclusions,
-    mappings = mappings,
-    functionMappings = functionMappings,
-    ignoreMapFromAnnotations = ignoreMapFromAnnotations,
-    useSettersOnly = useSettersOnly,
-    mapPrimitives = mapPrimitives,
-) as T?
-
-
 enum class UpdateOption {
     SET_NULLS, IGNORE_NULLS
 }
@@ -306,9 +266,9 @@ private fun mapComposite(
                 val subOriginalType = it::class.starProjectedType
 
                 mapTo(
-                    originalEntity = OriginalEntity(it, subOriginalType),
+                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                     targetType = keyTargetType,
-                    baseEntity = baseEntity,
+                    baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -320,9 +280,9 @@ private fun mapComposite(
                 val subOriginalType = it::class.starProjectedType
 
                 mapTo(
-                    originalEntity = OriginalEntity(it, subOriginalType),
+                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                     targetType = itemTargetType,
-                    baseEntity = baseEntity,
+                    baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -346,9 +306,9 @@ private fun mapComposite(
                 val subOriginalType = it::class.starProjectedType
 
                 mapTo(
-                    originalEntity = OriginalEntity(it, subOriginalType),
+                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                     targetType = firstTargetType,
-                    baseEntity = baseEntity,
+                    baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -360,9 +320,9 @@ private fun mapComposite(
                 val subOriginalType = it::class.starProjectedType
 
                 mapTo(
-                    originalEntity = OriginalEntity(it, subOriginalType),
+                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                     targetType = secondTargetType,
-                    baseEntity = baseEntity,
+                    baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -388,9 +348,9 @@ private fun mapComposite(
                     val subOriginalType = it::class.starProjectedType
 
                     mapTo(
-                        originalEntity = OriginalEntity(it, subOriginalType),
+                        originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                         targetType = firstTargetType,
-                        baseEntity = baseEntity,
+                        baseEntity = baseEntity?.let { base -> it to base.second },
                         exclusions = exclusions,
                         mappings = mappings,
                         functionMappings = functionMappings,
@@ -402,9 +362,9 @@ private fun mapComposite(
                 val subOriginalType = it::class.starProjectedType
 
                 mapTo(
-                    originalEntity = OriginalEntity(it, subOriginalType),
+                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                     targetType = secondTargetType,
-                    baseEntity = baseEntity,
+                    baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
                     mappings = mappings,
                     functionMappings = functionMappings,
@@ -416,9 +376,9 @@ private fun mapComposite(
                     val subOriginalType = it::class.starProjectedType
 
                     mapTo(
-                        originalEntity = OriginalEntity(it, subOriginalType),
+                        originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
                         targetType = thirdTargetType,
-                        baseEntity = baseEntity,
+                        baseEntity = baseEntity?.let { base -> it to base.second },
                         exclusions = exclusions,
                         mappings = mappings,
                         functionMappings = functionMappings,
