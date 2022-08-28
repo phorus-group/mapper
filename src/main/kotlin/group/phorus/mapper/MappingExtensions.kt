@@ -2,7 +2,6 @@ package group.phorus.mapper
 
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
-import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.typeOf
@@ -35,14 +34,22 @@ fun mapTo(
 
     // Remove the nullability from the original type
     originalEntity.type = originalEntity.type.removeNullability()
+    val targetKType = targetType.removeNullability()
+
+    if (targetKType.isSupertypeOf(originalEntity.type)
+        && baseEntity == null
+        && mappings.isEmpty()
+        && functionMappings.isEmpty()
+        && exclusions.isEmpty())
+        return originalEntity.value
 
     // If the target type and the original entity type are supertypes or the same type as iterable, map, pair,
     //  or triple, try to map them
     val mappedComposite = if (baseEntity != null) {
         // If base entity is not null, use it instead of the original entity, and use the original entity as base
         mapComposite(
-            originalEntity = OriginalEntity(baseEntity.first, targetType),
-            targetType = targetType,
+            originalEntity = OriginalEntity(baseEntity.first, targetKType),
+            targetType = targetKType,
             baseEntity = originalEntity.value!! to baseEntity.second,
             exclusions = exclusions,
             mappings = mappings,
@@ -54,7 +61,7 @@ fun mapTo(
     } else {
         mapComposite(
             originalEntity = originalEntity,
-            targetType = targetType,
+            targetType = targetKType,
             exclusions = exclusions,
             mappings = mappings,
             functionMappings = functionMappings,
@@ -67,14 +74,14 @@ fun mapTo(
         return mappedComposite.value
 
     // If the target type and the original entity type are primitives, try to map them
-    val mappedPrimitive = mapPrimitives(targetType, originalEntity, mapPrimitives)
+    val mappedPrimitive = mapPrimitives(targetKType, originalEntity, mapPrimitives)
     if (mappedPrimitive != null)
         return mappedPrimitive.value
 
 
     // Format the exclusion locations
     val fieldExclusions = exclusions.map { parseLocation(it).joinToString("/") }
-    val targetClass = TargetClass(targetType.classifier as KClass<*>, targetType)
+    val targetClass = TargetClass(targetKType.classifier as KClass<*>, targetKType)
 
     // Map all the mappings
     val mappingValues = processMappings(
@@ -116,13 +123,13 @@ fun mapTo(
     //  as many properties as possible, this will always create a new instance instead of modifying the base entity
     return if (baseEntity != null && !useSettersOnly && mappedProps.isNotEmpty()) {
         buildWithBaseEntity(
-            type = targetType,
+            type = targetKType,
             properties = mappedProps,
             baseEntity = baseEntity.first,
         )
     } else {
         buildOrUpdate(
-            type = targetType,
+            type = targetKType,
             properties = mappedProps,
             useSettersOnly = useSettersOnly,
             baseEntity = baseEntity?.first,
@@ -144,15 +151,17 @@ private fun mapPrimitives(
     originalEntity: OriginNodeInterface<*>,
     mapPrimitives: Boolean,
 ): PropertyWrapper<Any?>? {
-    // If target type is a primitive
-    if (targetType.isSubtypeOf(typeOf<String>()) || targetType.isSubtypeOf(typeOf<Number>())) {
+    // If target type is a primitive or any
+    if (typeOf<String>().isSupertypeOf(targetType) || typeOf<Number>().isSupertypeOf(targetType) || targetType.isSupertypeOf(typeOf<Any>())) {
         // But the original entity type is not a primitive, the value can't be mapped, so return null
-        if (!originalEntity.type.isSubtypeOf(typeOf<String>()) && !originalEntity.type.isSubtypeOf(typeOf<Number>()))
+        if (!typeOf<String>().isSupertypeOf(originalEntity.type)
+            && !typeOf<Number>().isSupertypeOf(originalEntity.type)
+            && !originalEntity.type.isSupertypeOf(typeOf<Any>()))
             return PropertyWrapper(null)
     } else { // If the target type is not a primitive
         // If the original entity type is also not a primitive, return null
         //  to continue the mapTo function, since the values could be mapped
-        return if (!originalEntity.type.isSubtypeOf(typeOf<String>()) && !originalEntity.type.isSubtypeOf(typeOf<Number>())) {
+        return if (!typeOf<String>().isSupertypeOf(originalEntity.type) && !typeOf<Number>().isSupertypeOf(originalEntity.type)) {
             null
         } else PropertyWrapper(null)
         // If the original type is not a primitive, the value can't be mapped, so return null
@@ -165,7 +174,7 @@ private fun mapPrimitives(
     if (!mapPrimitives) PropertyWrapper(null)
 
     // If the types are Number, return the value mapped with the native function
-    if (targetType.isSubtypeOf(typeOf<Number>()) && originalEntity.type.isSubtypeOf(typeOf<Number>())) {
+    if (typeOf<Number>().isSupertypeOf(targetType) && typeOf<Number>().isSupertypeOf(originalEntity.type)) {
         val value: Number? = when (targetType) {
             typeOf<Double>() -> (originalEntity.value as Number).toDouble()
             typeOf<Float>() -> (originalEntity.value as Number).toFloat()
@@ -178,7 +187,7 @@ private fun mapPrimitives(
         return value?.let { PropertyWrapper(it) }
     }
 
-    if (targetType.isSubtypeOf(typeOf<Number>()) && originalEntity.type.isSubtypeOf(typeOf<String>())) {
+    if (typeOf<Number>().isSupertypeOf(targetType) && typeOf<String>().isSupertypeOf(originalEntity.type)) {
         val value: Number? = runCatching { when (targetType) {
             typeOf<Double>() -> (originalEntity.value as String).toDouble()
             typeOf<Float>() -> (originalEntity.value as String).toFloat()
@@ -191,7 +200,7 @@ private fun mapPrimitives(
         return value?.let { PropertyWrapper(it) }
     }
 
-    if (targetType.isSubtypeOf(typeOf<String>()) && originalEntity.type.isSubtypeOf(typeOf<Number>()))
+    if (typeOf<String>().isSupertypeOf(targetType) && typeOf<Number>().isSupertypeOf(originalEntity.type))
         return PropertyWrapper(originalEntity.value.toString())
 
     return PropertyWrapper(null)

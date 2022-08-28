@@ -1,19 +1,65 @@
 package group.phorus.mapper
 
-import group.phorus.mapper.model.*
+import group.phorus.mapper.MappingExtensionsTest.TestClasses.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
-// TODO:
-//  Add a test checking that mappings and custom mappings don't work if the field is excluded
-//  Support vararg params
-//  Add a performance test comparing the mapping speed of the library with jackson convertValue function
-//  Add subfield tests and subfield exclusion tests
+// TODO: Support vararg params
 
-@Suppress("ClassName")
+@Suppress("UNUSED", "ClassName")
 internal class MappingExtensionsTest {
+
+    class TestClasses {
+
+        class User(
+            var addresses: List<String>,
+            var age: Int,
+        )
+
+        class Person(
+            var id: Long,
+            var name: String,
+            var surname: String,
+            var age: Int,
+        )
+
+        class PersonDTO(
+            var nameStr: String? = null,
+            var ageStr: String? = null,
+            var surname: String? = null,
+        )
+        class Room(
+            var guest: Person,
+            var roomName: String,
+        )
+
+        class RoomDTO(
+            var guest: PersonDTO,
+            var roomName: String,
+        )
+
+        class Wifi(
+            var room: Room,
+            var wifiPassword: Int,
+        )
+
+        class WifiDTO(
+            var room: RoomDTO,
+            var wifiPassword: Int,
+        )
+
+        class Reservation(
+            var room: Room,
+            var description: String,
+        )
+
+        class Hotel(
+            var hotelRooms: Set<Room>,
+            var numberOfGuests: Int,
+        )
+    }
 
     @Nested
     inner class `Test normal mappings` {
@@ -53,7 +99,7 @@ internal class MappingExtensionsTest {
         @Test
         fun `map from one object to another ignoring a property`() {
             val person = Person(23, "nameTest", "surnameTest", 87)
-            
+
             val result = person.mapTo<PersonDTO>(exclusions = listOf(PersonDTO::surname))
 
             assertNotNull(result)
@@ -81,16 +127,26 @@ internal class MappingExtensionsTest {
 
         @Test
         fun `map from one object to another manually mapping a property with the wrong type`() {
-            val person = Person(23, "nameTest", "surnameTest", 87)
+            val user = User(
+                addresses = listOf(
+                    "addr1",
+                    "addr2",
+                ),
+                age = 12,
+            )
 
-            val result = person.mapTo<PersonDTO>(mappings = mapOf(Person::age to (PersonDTO::nameStr to MappingFallback.NULL)))
+            val result = user.mapTo<PersonDTO>(mappings = mapOf(
+                User::addresses to (PersonDTO::nameStr to MappingFallback.NULL),
+                User::age to (PersonDTO::ageStr to MappingFallback.NULL),
+            ))
 
             assertNotNull(result)
 
             // If the mapper cannot automatically map the original property to the target one, it will leave it as null
             assertNull(result.nameStr)
 
-            assertEquals("surnameTest", result.surname)
+            // The mapper will map the primitive automatically
+            assertEquals("12", result.ageStr)
         }
     }
 
@@ -158,6 +214,55 @@ internal class MappingExtensionsTest {
         }
     }
 
+    
+    class CompositeTestClasses {
+
+        class UserDTO(
+            var addresses: List<String>,
+            var age: Int,
+        )
+
+        class UserSet(
+            var addresses: Set<String>,
+            var age: Int,
+        )
+
+        class UserSetDTO(
+            var addresses: Set<String>,
+            var age: Int,
+        )
+
+        class UserMap(
+            var addresses: Map<Int, String>,
+            var age: Int,
+        )
+
+        class UserMapDTO(
+            var addresses: Map<Int, String>,
+            var age: Int,
+        )
+
+        class UserPair(
+            var addresses: Pair<String, String>,
+            var age: Int,
+        )
+
+        class UserPairDTO(
+            var addresses: Pair<String, String>,
+            var age: Int,
+        )
+
+        class UserTriple(
+            var addresses: Triple<String, String, String>,
+            var age: Int,
+        )
+
+        class UserTripleDTO(
+            var addresses: Triple<String, String, String>,
+            var age: Int,
+        )
+    }
+    
     @Nested
     inner class `Test composites` {
 
@@ -182,6 +287,22 @@ internal class MappingExtensionsTest {
             assertEquals("nameTest2", result[1].nameStr)
             assertEquals("surnameTest2", result[1].surname)
             assertNull(result[1].ageStr)
+        }
+
+        @Test
+        fun `map from an object with a list to another`() {
+            val users = User(
+                addresses = listOf("addr1", "addr2"),
+                age = 27,
+            )
+
+            val result = users.mapTo<CompositeTestClasses.UserDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("addr1", result.addresses[0])
+            assertEquals("addr2", result.addresses[1])
+            assertEquals(27, result.age)
         }
 
         @Test
@@ -235,6 +356,22 @@ internal class MappingExtensionsTest {
         }
 
         @Test
+        fun `map from an object with a set to another`() {
+            val users = CompositeTestClasses.UserSet(
+                addresses = setOf("addr1", "addr2"),
+                age = 27,
+            )
+
+            val result = users.mapTo<CompositeTestClasses.UserSetDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("addr1", result.addresses.toList()[0])
+            assertEquals("addr2", result.addresses.toList()[1])
+            assertEquals(27, result.age)
+        }
+
+        @Test
         fun `try to map from an array of objects to another - not supported`() {
             val persons = arrayOf(
                 Person(23, "nameTest1", "surnameTest1", 87),
@@ -273,6 +410,22 @@ internal class MappingExtensionsTest {
         }
 
         @Test
+        fun `map from an object with a map to another`() {
+            val users = CompositeTestClasses.UserMap(
+                addresses = mapOf(1 to "addr1", 2 to "addr2"),
+                age = 27,
+            )
+
+            val result = users.mapTo<CompositeTestClasses.UserMapDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("addr1", result.addresses[1])
+            assertEquals("addr2", result.addresses[2])
+            assertEquals(27, result.age)
+        }
+
+        @Test
         fun `map from a pair of objects to another`() {
             val person = "0" to Person(23, "nameTest", "surnameTest", 87)
 
@@ -286,6 +439,22 @@ internal class MappingExtensionsTest {
             assertEquals("nameTest", result.second.nameStr)
             assertEquals("surnameTest", result.second.surname)
             assertNull(result.second.ageStr)
+        }
+
+        @Test
+        fun `map from an object with a pair to another`() {
+            val users = CompositeTestClasses.UserPair(
+                addresses = "addr1" to "addr2",
+                age = 27,
+            )
+
+            val result = users.mapTo<CompositeTestClasses.UserPairDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("addr1", result.addresses.first)
+            assertEquals("addr2", result.addresses.second)
+            assertEquals(27, result.age)
         }
 
         @Test
@@ -303,6 +472,23 @@ internal class MappingExtensionsTest {
             assertEquals("nameTest", result.third.nameStr)
             assertEquals("surnameTest", result.third.surname)
             assertNull(result.third.ageStr)
+        }
+
+        @Test
+        fun `map from an object with a triple to another`() {
+            val users = CompositeTestClasses.UserTriple(
+                addresses = Triple("addr1", "addr2", "addr3"),
+                age = 27,
+            )
+
+            val result = users.mapTo<CompositeTestClasses.UserTripleDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("addr1", result.addresses.first)
+            assertEquals("addr2", result.addresses.second)
+            assertEquals("addr3", result.addresses.third)
+            assertEquals(27, result.age)
         }
 
         @Test
@@ -325,8 +511,8 @@ internal class MappingExtensionsTest {
 
         @Test
         fun `update an object from another object`() {
-            val person = Person(23, "nameTest", "surnameTest", 87)
-            val person2 = Person(name = "nameTest2")
+            val person = PersonDTO("nameTest", "87", "surnameTest")
+            val person2 = PersonDTO(nameStr = "nameTest2")
 
             val result = person.updateFrom(person2)
 
@@ -335,16 +521,15 @@ internal class MappingExtensionsTest {
             // The result is still the same instance
             assertTrue(result === person)
 
-            assertEquals(23, result.id)
-            assertEquals("nameTest2", result.name) // Only the name field was updated
+            assertEquals("nameTest2", result.nameStr) // Only the name field was updated
             assertEquals("surnameTest", result.surname)
-            assertEquals(87, result.age)
+            assertEquals("87", result.ageStr)
         }
 
         @Test
         fun `update an object from another object with setters only = false`() {
-            val person = Person(23, "nameTest", "surnameTest", 87)
-            val person2 = Person(name = "nameTest2")
+            val person = PersonDTO("nameTest", "87", "surnameTest")
+            val person2 = PersonDTO(nameStr = "nameTest2")
 
             val result = person.updateFrom(person2, useSettersOnly = false)
 
@@ -353,16 +538,15 @@ internal class MappingExtensionsTest {
             // The result is no longer the same instance, since it was built using a constructor
             assertTrue(result != person)
 
-            assertEquals(23, result.id)
-            assertEquals("nameTest2", result.name) // Only the name field was updated
+            assertEquals("nameTest2", result.nameStr) // Only the name field was updated
             assertEquals("surnameTest", result.surname)
-            assertEquals(87, result.age)
+            assertEquals("87", result.ageStr)
         }
 
         @Test
         fun `update an object from another object with the update option set_nulls`() {
-            val person = Person(23, "nameTest", "surnameTest", 87)
-            val person2 = Person(name = "nameTest2")
+            val person = PersonDTO("nameTest", "87", "surnameTest")
+            val person2 = PersonDTO(nameStr = "nameTest2")
 
             val result = person.updateFrom(person2, UpdateOption.SET_NULLS)
 
@@ -372,16 +556,15 @@ internal class MappingExtensionsTest {
             assertTrue(result === person)
 
             // Since we are using the SET_NULL options, nulls are no longer ignored thus every field is updated
-            assertNull(result.id)
-            assertEquals("nameTest2", result.name)
+            assertEquals("nameTest2", result.nameStr)
             assertNull(result.surname)
-            assertNull(result.age)
+            assertNull(result.ageStr)
         }
 
         @Test
         fun `update a collection of objects from another object`() {
-            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
-            val person2 = Person(name = "nameTest2")
+            val persons = listOf(PersonDTO("nameTest", "87", "surnameTest"))
+            val person2 = PersonDTO(nameStr = "nameTest2")
 
             val result = persons.updateFrom(person2)
 
@@ -390,16 +573,15 @@ internal class MappingExtensionsTest {
             // The result list still has the same instances
             assertTrue(result.first() === persons.first())
 
-            assertEquals(23, result.first().id)
-            assertEquals("nameTest2", result.first().name) // Only the name field was updated
+            assertEquals("nameTest2", result.first().nameStr) // Only the name field was updated
             assertEquals("surnameTest", result.first().surname)
-            assertEquals(87, result.first().age)
+            assertEquals("87", result.first().ageStr)
         }
 
         @Test
         fun `update a collection of objects from another collection`() {
-            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
-            val person2 = listOf(Person(name = "nameTest2"))
+            val persons = listOf(PersonDTO("nameTest", "87", "surnameTest"))
+            val person2 = listOf(PersonDTO(nameStr = "nameTest2"))
 
             val result = persons.updateFrom(person2)
 
@@ -408,18 +590,16 @@ internal class MappingExtensionsTest {
             // The result list still has the same instances
             assertTrue(result.first() === persons.first())
 
-            assertEquals(23, result.first().id)
-
             // The mapper doesn't update collections of objects from other collections, because it makes no sense
-            assertEquals("nameTest", result.first().name)
+            assertEquals("nameTest", result.first().nameStr)
             assertEquals("surnameTest", result.first().surname)
-            assertEquals(87, result.first().age)
+            assertEquals("87", result.first().ageStr)
         }
 
         @Test
         fun `update a collection of objects from another object with setters only = false`() {
-            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
-            val person2 = Person(name = "nameTest2")
+            val persons = listOf(PersonDTO("nameTest", "87", "surnameTest"))
+            val person2 = PersonDTO(nameStr = "nameTest2")
 
             val result = persons.updateFrom(person2, useSettersOnly = false)
 
@@ -428,16 +608,15 @@ internal class MappingExtensionsTest {
             // The result list doesn't have the same instances, since it was built using a constructor
             assertTrue(result.first() != persons.first())
 
-            assertEquals(23, result.first().id)
-            assertEquals("nameTest2", result.first().name) // Only the name field was updated
+            assertEquals("nameTest2", result.first().nameStr) // Only the name field was updated
             assertEquals("surnameTest", result.first().surname)
-            assertEquals(87, result.first().age)
+            assertEquals("87", result.first().ageStr)
         }
 
         @Test
         fun `update a collection of objects from another object with the update option set_nulls`() {
-            val persons = listOf(Person(23, "nameTest", "surnameTest", 87))
-            val person2 = Person(name = "nameTest2")
+            val persons = listOf(PersonDTO("nameTest", "87", "surnameTest"))
+            val person2 = PersonDTO(nameStr = "nameTest2")
 
             val result = persons.updateFrom(person2, UpdateOption.SET_NULLS)
 
@@ -447,10 +626,9 @@ internal class MappingExtensionsTest {
             assertTrue(result.first() === persons.first())
 
             // Since we are using the SET_NULL options, nulls are no longer ignored thus every field is updated
-            assertNull(result.first().id)
-            assertEquals("nameTest2", result.first().name)
+            assertEquals("nameTest2", result.first().nameStr)
             assertNull(result.first().surname)
-            assertNull(result.first().age)
+            assertNull(result.first().ageStr)
         }
     }
 
@@ -572,12 +750,12 @@ internal class MappingExtensionsTest {
     }
 
     @Nested
-    inner class `Compound tests` {
+    inner class `Tests compounds` {
 
         @Test
         fun `map from one compound object to another`() {
             val room = Room(
-                guest = Person(23, "nameTest", "surnameTest"),
+                guest = Person(23, "nameTest", "surnameTest", 88),
                 roomName = "roomNameTest",
             )
 
@@ -588,14 +766,14 @@ internal class MappingExtensionsTest {
 
             // The mapper will try to map any properties automatically
             assertEquals("roomNameTest", result.roomName)
-            assertEquals("surnameTest", result.guest!!.surname)
+            assertEquals("surnameTest", result.guest.surname)
         }
 
         @Test
         fun `map from one double compound object to another`() {
             val wifi = Wifi(
                 room = Room(
-                    guest = Person(23, "nameTest", "surnameTest"),
+                    guest = Person(23, "nameTest", "surnameTest", 88),
                     roomName = "roomNameTest",
                 ),
                 wifiPassword = 12,
@@ -605,19 +783,19 @@ internal class MappingExtensionsTest {
 
             assertNotNull(result)
             assertNotNull(result.room)
-            assertNotNull(result.room!!.guest)
+            assertNotNull(result.room.guest)
 
             // The mapper works recursively, so properties of properties will also be mapped
             assertEquals(12, result.wifiPassword)
-            assertEquals("roomNameTest", result.room!!.roomName)
-            assertEquals("surnameTest", result.room!!.guest!!.surname)
+            assertEquals("roomNameTest", result.room.roomName)
+            assertEquals("surnameTest", result.room.guest.surname)
         }
 
         @Test
         fun `map from one double compound object to another with a function`() {
             val wifi = Wifi(
                 room = Room(
-                    guest = Person(23, "nameTest", "surnameTest"),
+                    guest = Person(23, "nameTest", "surnameTest", 88),
                     roomName = "roomNameTest",
                 ),
                 wifiPassword = 12,
@@ -633,270 +811,215 @@ internal class MappingExtensionsTest {
 
             assertNotNull(result)
             assertNotNull(result.room)
-            assertNotNull(result.room!!.guest)
+            assertNotNull(result.room.guest)
 
             assertEquals(17, result.wifiPassword)
-            assertEquals("roomNameTest", result.room!!.roomName)
-            assertEquals("surnameTest", result.room!!.guest!!.surname)
+            assertEquals("roomNameTest", result.room.roomName)
+            assertEquals("surnameTest", result.room.guest.surname)
         }
     }
 
 
-//
-//        @Test
-//        fun `map from one object to another with a function returning a collection that needs to be automatically mapped`() {
-//            val hotel = Hotel(
-//                hotelRooms = setOf(
-//                    Room(Person(23, "nameTest", "surnameTest"), "roomName1"),
-//                    Room(Person(25, "nameTest2", "surnameTest2"), "roomName2"),
-//                ),
-//                numberOfGuests = 2,
-//            )
-//
-//            val functionReturningColl : (Set<Room>) -> Set<Room> = {
-//                it
-//            }
-//
-//            val result = hotel.mapTo(
-//                HotelDTO::class,
-//                customMappings = mapOf("hotelRooms" to (functionReturningColl to "hotelRooms")),
-//            )
-//
-//            assertNotNull(result)
-//            assertNotNull(result.hotelRooms)
-//
-//            // The mapper can also automatically map the output of functions even if they are collections
-//            assertEquals(2, result.hotelRooms!!.size)
-//            assertEquals("roomName1", result.hotelRooms!![0].roomName)
-//            assertEquals("surnameTest", result.hotelRooms!![0].guest?.surname)
-//            assertEquals("roomName2", result.hotelRooms!![1].roomName)
-//            assertEquals("surnameTest2", result.hotelRooms!![1].guest?.surname)
-//
-//            assertEquals(2, result.numberOfGuests)
-//        }
-//
-//        @Test
-//        fun `map from one object to another with a function using a collection that needs to be automatically mapped`() {
-//            val hotel = Hotel(
-//                setOf(
-//                    Room(Person(23, "nameTest", "surnameTest"), "roomName1"),
-//                    Room(Person(25, "nameTest2", "surnameTest2"), "roomName2"),
-//                ),
-//                2,
-//            )
-//
-//            val functionReturningColl : (Set<RoomDTO>) -> Set<RoomDTO> = {
-//                it
-//            }
-//
-//            val result = hotel.mapTo(
-//                HotelDTO::class,
-//                customMappings = mapOf("hotelRooms" to (functionReturningColl to "hotelRooms")),
-//            )
-//
-//            assertNotNull(result)
-//            assertNotNull(result.hotelRooms)
-//
-//            // The mapper can also automatically map the input of functions even if they are collections
-//            assertEquals(2, result.hotelRooms!!.size)
-//            assertEquals("roomName1", result.hotelRooms!![0].roomName)
-//            assertEquals("surnameTest", result.hotelRooms!![0].guest?.surname)
-//            assertEquals("roomName2", result.hotelRooms!![1].roomName)
-//            assertEquals("surnameTest2", result.hotelRooms!![1].guest?.surname)
-//
-//            assertEquals(2, result.numberOfGuests)
-//        }
-//    }
-//
-//
+    class MapFromClasses {
+
+        class UserDTO(
+            @field:MapFrom(["addresses"])
+            var addrs: MutableSet<Any>,
+            var age: Int,
+        )
+
+        class PersonDTO(
+            @field:MapFrom(["name"])
+            var nameStr: String,
+            var surname: String,
+            var age: Int,
+        )
+
+        // If the MapFrom fails, the fallback will be used, the default one is CONTINUE
+        // With fallback continue, the mapper will try to map the field normally
+        class PersonFallbackDTO(
+            val nameStr: String?,
+
+            @field:MapFrom(["isGoingToFail"])
+            val surname: String,
+            val age: Int,
+        )
+
+        // If the MapFrom fails and the fallback is null, the mapper will try to set the property to null
+        class PersonNullFallbackDTO(
+            val nameStr: String?,
+
+            @field:MapFrom(["isGoingToFail"], MappingFallback.NULL)
+            val surname: String?,
+            val age: Int,
+        )
+
+        class RoomFallbackDTO(
+            @field:MapFrom(["room/guest/name"], MappingFallback.NULL)
+            var name: String?,
+            var description: String,
+        )
+
+
+        // Only the first valid location will be used
+        // If none of the locations is being able to parse anything, then the fallback will be used
+        class RoomDTO(
+            @field:MapFrom(["isGoingToFail", "alsoGoingToFail", "guest/name"])
+            val guestName: String,
+            val guestAge: String?,
+            val roomName: String?,
+        )
+
+        class HotelDTO(
+            @field:MapFrom(["hotelRooms"])
+            var roomDTOs: MutableList<RoomDTO>,
+            var numberOfGuests: Int,
+        )
+    }
+
     @Nested
-    inner class `MapFrom annotation tests` {
+    inner class `Test MapFrom annotations` {
 
-        @Nested
-        inner class `Normal tests` {
+        @Test
+        fun `map from one object to another with the MapFrom annotation`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
 
-            @Test
-            fun `map from one object to another relying in the MapFrom annotation`() {
-                val person = Person(23, "nameTest", "surnameTest", 87)
+            val result = person.mapTo<MapFromClasses.PersonDTO>()
 
-                val result = person.mapTo<PersonWAnnotationDTO>()
+            assertNotNull(result)
 
-                assertNotNull(result)
+            // The mapper used the content of the MapFrom annotation
+            assertEquals("nameTest", result.nameStr)
 
-                // The mapper used the content of the MapFrom annotation
-                assertEquals("nameTest", result.nameStr)
-
-                assertEquals("surnameTest", result.surname)
-                assertEquals(87, result.age)
-            }
+            assertEquals("surnameTest", result.surname)
+            assertEquals(87, result.age)
         }
-//
-//
-//        @Nested
-//        inner class `Fallback tests` {
-//
-//            @Test
-//            fun `map from one object to another relying in the MapFrom annotation, but failing to map and relying on normal mapping`() {
-//                val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//                val result = person.mapTo(PersonWAnnotationFallbackDTO::class)
-//
-//                assertNotNull(result)
-//
-//                // The property is null because there's no property with the same name in the original object
-//                assertNull(result.nameStr)
-//
-//                assertEquals("surnameTest", result.surname)
-//                assertEquals(87, result.age)
-//            }
-//
-//            @Test
-//            fun `map from one object to another relying in the MapFrom annotation, but failing to map and using the null fallback strategy`() {
-//                val person = Person(23, "nameTest", "surnameTest", 87)
-//
-//                val result = person.mapTo(PersonWAnnotationNullFallbackDTO::class)
-//
-//                assertNotNull(result)
-//                assertNull(result.nameStr)
-//
-//                // The property is null even if there's a property with the same name in the original object, because
-//                //  the MapFrom annotation has the option MappingFallback.NULL
-//                assertNull(result.surname)
-//
-//                assertEquals(87, result.age)
-//            }
-//        }
-//
-//
-//        @Nested
-//        inner class `Compound tests` {
-//
-//            @Test
-//            fun `map from one compound object to another relying in the MapFrom annotation`() {
-//                val room = Room(
-//                    guest = Person(1, "nameTest", "surnameTest", 87),
-//                    roomName = "roomNameTest",
-//                )
-//
-//                val result = room.mapTo(RoomWAnnotationDTO::class)
-//
-//                assertNotNull(result)
-//                assertNotNull(result.guestDTO)
-//
-//                assertEquals("nameTest", result.guestDTO!!.nameStr)
-//                assertEquals("roomNameTest", result.roomName)
-//            }
-//
-//            @Test
-//            fun `map from one compound object to another relying in a compound location in the MapFrom annotation`() {
-//                val room = Room(
-//                    guest = Person(1, "nameTest", "surnameTest", 87),
-//                    roomName = "roomNameTest",
-//                )
-//
-//                val result = room.mapTo(RoomWAnnotation2DTO::class)
-//
-//                assertNotNull(result)
-//
-//                assertEquals("nameTest", result.guestName)
-//                assertEquals("roomNameTest", result.roomName)
-//            }
-//
-//            @Test
-//            fun `map from one double compound object to another relying in a compound location in the MapFrom annotation`() {
-//                val reservation = Reservation(
-//                    room = Room(
-//                        guest = Person(1, "nameTest", "surnameTest", 76),
-//                        roomName = "roomNameTest"),
-//                    description = "descriptionTest",
-//                )
-//
-//                val result = reservation.mapTo(RoomW3AnnotationsFallbackDTO::class)
-//
-//                assertNotNull(result)
-//
-//                assertEquals("nameTest", result.name)
-//                assertEquals("descriptionTest", result.description)
-//            }
-//        }
-//
-//
-//        @Nested
-//        inner class `Locations tests` {
-//
-//            @Test
-//            fun `map from one object to another relying in the MapFrom annotation, but only the last location is valid`() {
-//                val room = Room(
-//                    guest = Person(1, "nameTest", "surnameTest", 87),
-//                    roomName = "roomNameTest",
-//                )
-//
-//                val result = room.mapTo(RoomW3AnnotationsDTO::class)
-//
-//                assertNotNull(result)
-//
-//                assertEquals("nameTest", result.guestName)
-//                assertEquals("roomNameTest", result.roomName)
-//            }
-//        }
-//
-//
-//        @Nested
-//        inner class `Collections tests` {
-//
-//            @Test
-//            fun `map from one object with a collection to another relying in the MapFrom annotation`() {
-//                val user = User(
-//                    addresses = listOf(
-//                        "addr1",
-//                        "addr2",
-//                    ),
-//                    age = 12,
-//                )
-//
-//                val result = user.mapTo(UserWAnnotationDTO::class)
-//
-//                assertNotNull(result)
-//                assertNotNull(result.addrs)
-//
-//                // The mapper will map all the items of any collection automatically
-//                assertEquals(2, result.addrs!!.size)
-//                assertEquals("addr1", result.addrs!!.toList()[0] as String)
-//                assertEquals("addr2", result.addrs!!.toList()[1] as String)
-//
-//                assertEquals(12, result.age)
-//            }
-//
-//            @Test
-//            fun `map from one object with a compound collection to another relying in the MapFrom annotation`() {
-//                val hotel = Hotel(
-//                    hotelRooms = setOf(
-//                        Room(Person(23, "nameTest", "surnameTest"), "roomName1"),
-//                        Room(Person(25, "nameTest2", "surnameTest2"), "roomName2"),
-//                    ),
-//                    numberOfGuests = 12,
-//                )
-//
-//                val addFiveToInt : (Int) -> Int = {
-//                    it + 5
-//                }
-//
-//                val result = hotel.mapTo(
-//                    HotelWAnnotationDTO::class,
-//                    customMappings = mapOf("numberOfGuests" to (addFiveToInt to "numberOfGuests")),
-//                )
-//
-//                assertNotNull(result)
-//                assertNotNull(result.roomDTOs)
-//
-//                assertEquals(2, result.roomDTOs!!.size)
-//                assertEquals("roomName1", result.roomDTOs!![0].roomName)
-//                assertEquals("surnameTest", result.roomDTOs!![0].guest?.surname)
-//                assertEquals("roomName2", result.roomDTOs!![1].roomName)
-//                assertEquals("surnameTest2", result.roomDTOs!![1].guest?.surname)
-//
-//                assertEquals(17, result.numberOfGuests)
-//            }
-//        }
+
+        @Test
+        fun `map from one object to another with the MapFrom annotation, but failing to map and relying on normal mapping`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<MapFromClasses.PersonFallbackDTO>()
+
+            assertNotNull(result)
+
+            // The property is null because there's no property with the same name in the original object
+            assertNull(result.nameStr)
+
+            assertEquals("surnameTest", result.surname)
+            assertEquals(87, result.age)
+        }
+
+        @Test
+        fun `map from one object to another with the MapFrom annotation, but failing to map and using the null fallback strategy`() {
+            val person = Person(23, "nameTest", "surnameTest", 87)
+
+            val result = person.mapTo<MapFromClasses.PersonNullFallbackDTO>()
+
+            assertNotNull(result)
+            assertNull(result.nameStr)
+
+            // The property is null even if there's a property with the same name in the original object, because
+            //  the MapFrom annotation has the option MappingFallback.NULL
+            assertNull(result.surname)
+
+            assertEquals(87, result.age)
+        }
+
+        @Test
+        fun `map from a compound object to another with the MapFrom annotation`() {
+            val reservation = Reservation(
+                room = Room(
+                    guest = Person(1, "nameTest", "surnameTest", 76),
+                    roomName = "roomNameTest"),
+                description = "descriptionTest",
+            )
+
+            val result = reservation.mapTo<MapFromClasses.RoomFallbackDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("nameTest", result.name)
+            assertEquals("descriptionTest", result.description)
+        }
+
+        @Test
+        fun `map from one object to another with the MapFrom annotation, but only the last location is valid`() {
+            val room = Room(
+                guest = Person(1, "nameTest", "surnameTest", 87),
+                roomName = "roomNameTest",
+            )
+
+            val result = room.mapTo<MapFromClasses.RoomDTO>()
+
+            assertNotNull(result)
+
+            assertEquals("nameTest", result.guestName)
+            assertNull(result.guestAge)
+            assertEquals("roomNameTest", result.roomName)
+        }
+
+        @Test
+        fun `map from one object with a collection to another with the MapFrom annotation`() {
+            val user = User(
+                addresses = listOf(
+                    "addr1",
+                    "addr2",
+                ),
+                age = 12,
+            )
+
+            val result = user.mapTo<MapFromClasses.UserDTO>()
+
+            assertNotNull(result)
+            assertNotNull(result.addrs)
+
+            // The mapper will map all the items of any collection automatically
+            assertEquals(2, result.addrs.size)
+            assertEquals("addr1", result.addrs.toList()[0] as String)
+            assertEquals("addr2", result.addrs.toList()[1] as String)
+
+            assertEquals(12, result.age)
+        }
+
+        @Test
+        fun `map from one object with a compound collection to another with the MapFrom annotation`() {
+            val hotel = Hotel(
+                hotelRooms = setOf(
+                    Room(Person(23, "nameTest", "surnameTest", 88), "roomName1"),
+                    Room(Person(25, "nameTest2", "surnameTest2", 89), "roomName2"),
+                ),
+                numberOfGuests = 12,
+            )
+
+            val addFiveToInt : (Int) -> Int = {
+                it + 5
+            }
+
+            val result = hotel.mapTo<MapFromClasses.HotelDTO>(functionMappings = mapOf(
+                Hotel::numberOfGuests to (addFiveToInt to (MapFromClasses.HotelDTO::numberOfGuests to MappingFallback.NULL)),
+                Hotel::hotelRooms to ({ rooms: List<Room> ->
+                    rooms.map { MapFromClasses.RoomDTO(it.guest.name, it.guest.age.toString(), it.roomName) }
+                } to (MapFromClasses.HotelDTO::roomDTOs to MappingFallback.NULL)),
+            ))
+
+            assertNotNull(result)
+            assertNotNull(result.roomDTOs)
+
+            assertEquals(2, result.roomDTOs.size)
+            assertEquals("roomName1", result.roomDTOs[0].roomName)
+            assertEquals("nameTest", result.roomDTOs[0].guestName)
+            assertEquals("88", result.roomDTOs[0].guestAge)
+            assertEquals("roomName2", result.roomDTOs[1].roomName)
+            assertEquals("nameTest2", result.roomDTOs[1].guestName)
+            assertEquals("89", result.roomDTOs[1].guestAge)
+
+            assertEquals(17, result.numberOfGuests)
+        }
+
+    // TODO:
+    //  - Add map from tests with locations from parent objects too
+    //  - Add subexclusions and submappings tests
+    //  - Add a performance test comparing the mapping speed of the library with jackson convertValue function
     }
 }

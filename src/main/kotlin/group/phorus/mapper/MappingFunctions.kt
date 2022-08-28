@@ -1,7 +1,6 @@
 package group.phorus.mapper
 
 import kotlin.reflect.KFunction
-import kotlin.reflect.full.createType
 import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
 import kotlin.reflect.jvm.reflect
@@ -78,13 +77,9 @@ fun processMappings(
                         PropertyWrapper(null)
                     } else null
                 } else {
-                    // Make the original prop type non-nullable, since we already check that the original
-                    //  property value is not null
-                    val originalValueType = originalProp.type.removeNullability()
-
                     // If the target prop type is not a supertype or the same type as the original value type, then
                     //  map the value
-                    val finalProp = if (!targetField.type.isSupertypeOf(originalValueType)) {
+                    val finalProp = if (!targetField.type.isSupertypeOf(originalProp.type.removeNullability())) {
                         mapTo(originalEntity = originalProp, targetType = targetField.type)
                     } else originalProp.value
 
