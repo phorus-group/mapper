@@ -954,6 +954,32 @@ internal class MappingExtensionsTest {
             assertEquals(3, result.house.address?.id)
             assertEquals("testAddress2", result.house.address?.value)
         }
+
+        @Test
+        fun `map from one object to another with subfield exclusions`() {
+            val person = SubTestClasses.Person(
+                name = "testName",
+                house = SubTestClasses.House(
+                    number = 14,
+                    address = SubTestClasses.Address(
+                        id = 3,
+                        value = "testAddress"
+                    )
+                )
+            )
+
+            val result = person.mapToClass<SubTestClasses.PersonDTO>(exclusions = listOf(
+                "house/number",
+                "house/address/value",
+            ))
+
+            assertNotNull(result)
+
+            assertEquals("testName", result.name)
+            assertNull(result.house.number)
+            assertEquals(3, result.house.address?.id)
+            assertNull(result.house.address?.value)
+        }
     }
 
     @Nested
