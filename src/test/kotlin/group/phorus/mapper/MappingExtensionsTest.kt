@@ -319,8 +319,6 @@ internal class MappingExtensionsTest {
         fun `map from a int to a double - disable map primitives`() {
             val result = 10.mapTo<Double>(mapPrimitives = false)
 
-            assertNotNull(result)
-
             // The property is not mapped
             assertNull(result)
         }
@@ -348,8 +346,6 @@ internal class MappingExtensionsTest {
         @Test
         fun `map from a int to a string - disable map primitives`() {
             val result = 10.mapTo<String>(mapPrimitives = false)
-
-            assertNotNull(result)
 
             // The property is not mapped
             assertNull(result)

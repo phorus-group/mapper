@@ -171,7 +171,7 @@ private fun mapPrimitives(
     if (targetType.isSupertypeOf(originalEntity.type))
         return PropertyWrapper(originalEntity.value)
 
-    if (!mapPrimitives) PropertyWrapper(null)
+    if (!mapPrimitives) return PropertyWrapper(null)
 
     // If the types are Number, return the value mapped with the native function
     if (typeOf<Number>().isSupertypeOf(targetType) && typeOf<Number>().isSupertypeOf(originalEntity.type)) {
