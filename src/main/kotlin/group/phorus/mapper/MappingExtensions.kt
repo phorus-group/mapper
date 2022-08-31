@@ -48,9 +48,9 @@ fun mapTo(
     val mappedComposite = if (baseEntity != null) {
         // If base entity is not null, use it instead of the original entity, and use the original entity as base
         mapComposite(
-            originalEntity = OriginalEntity(baseEntity.first, targetKType),
+            originalEntity = originalEntity,
             targetType = targetKType,
-            baseEntity = originalEntity.value!! to baseEntity.second,
+            baseEntity = baseEntity,
             exclusions = exclusions,
             mappings = mappings,
             functionMappings = functionMappings,
@@ -226,24 +226,31 @@ private fun mapComposite(
     mapPrimitives: Boolean,
 ): PropertyWrapper<Any?>? {
 
+    val entity = if (baseEntity != null) {
+        OriginalEntity(baseEntity.first, targetType)
+    } else originalEntity
+
     // If the target type and original type are not both supertypes or the same type as iterable, map, pair,
     //  or triple, return null
-    if ((!typeOf<Iterable<*>>().isSupertypeOf(targetType) && !typeOf<Iterable<*>>().isSupertypeOf(originalEntity.type))
-        && (!typeOf<Map<*, *>>().isSupertypeOf(targetType) && !typeOf<Map<*, *>>().isSupertypeOf(originalEntity.type))
-        && (!typeOf<Pair<*, *>>().isSupertypeOf(targetType) && !typeOf<Pair<*, *>>().isSupertypeOf(originalEntity.type))
-        && (!typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && !typeOf<Triple<*, *, *>>().isSupertypeOf(originalEntity.type)))
+    if ((!typeOf<Iterable<*>>().isSupertypeOf(targetType) && !typeOf<Iterable<*>>().isSupertypeOf(entity.type))
+        && (!typeOf<Map<*, *>>().isSupertypeOf(targetType) && !typeOf<Map<*, *>>().isSupertypeOf(entity.type))
+        && (!typeOf<Pair<*, *>>().isSupertypeOf(targetType) && !typeOf<Pair<*, *>>().isSupertypeOf(entity.type))
+        && (!typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && !typeOf<Triple<*, *, *>>().isSupertypeOf(entity.type)))
         return null
 
     // If the target type and original type are both supertypes or the same type as iterable, map each item
-    if (typeOf<Iterable<*>>().isSupertypeOf(targetType) && typeOf<Iterable<*>>().isSupertypeOf(originalEntity.type)) {
+    if (typeOf<Iterable<*>>().isSupertypeOf(targetType) && typeOf<Iterable<*>>().isSupertypeOf(entity.type)) {
         val subTargetType = targetType.arguments.first().type ?: return null
 
-        return (originalEntity.value as Iterable<*>).mapNotNull { item ->
+        return (entity.value as Iterable<*>).mapNotNull { item ->
             item?.let {
                 val subOriginalType = it::class.starProjectedType
+                val subOriginalEntity = if (baseEntity != null) {
+                    OriginalEntity(originalEntity.value!!, subOriginalType)
+                } else  OriginalEntity(it, subOriginalType)
 
                 mapTo(
-                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                    originalEntity = subOriginalEntity,
                     targetType = subTargetType,
                     baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
@@ -264,18 +271,21 @@ private fun mapComposite(
     }
 
     // If the target type and original type are both supertypes or the same type as map, map each item
-    if (typeOf<Map<*, *>>().isSupertypeOf(targetType) && typeOf<Map<*, *>>().isSupertypeOf(originalEntity.type)) {
+    if (typeOf<Map<*, *>>().isSupertypeOf(targetType) && typeOf<Map<*, *>>().isSupertypeOf(entity.type)) {
         val subTargetType = targetType.arguments
 
-        return (originalEntity.value as Map<*, *>).mapNotNull { (key, item) ->
+        return (entity.value as Map<*, *>).mapNotNull { (key, item) ->
             val keyTargetType = subTargetType[0].type ?: return null
             val itemTargetType = subTargetType[1].type ?: return null
 
             key?.let {
                 val subOriginalType = it::class.starProjectedType
+                val subOriginalEntity = if (baseEntity != null) {
+                    OriginalEntity(originalEntity.value!!, subOriginalType)
+                } else  OriginalEntity(it, subOriginalType)
 
                 mapTo(
-                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                    originalEntity = subOriginalEntity,
                     targetType = keyTargetType,
                     baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
@@ -287,9 +297,12 @@ private fun mapComposite(
                 )
             } to item?.let {
                 val subOriginalType = it::class.starProjectedType
+                val subOriginalEntity = if (baseEntity != null) {
+                    OriginalEntity(originalEntity.value!!, subOriginalType)
+                } else  OriginalEntity(it, subOriginalType)
 
                 mapTo(
-                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                    originalEntity = subOriginalEntity,
                     targetType = itemTargetType,
                     baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
@@ -304,18 +317,21 @@ private fun mapComposite(
     }
 
     // If the target type and original type are both supertypes or the same type as pair, map each item
-    if (typeOf<Pair<*, *>>().isSupertypeOf(targetType) && typeOf<Pair<*, *>>().isSupertypeOf(originalEntity.type)) {
+    if (typeOf<Pair<*, *>>().isSupertypeOf(targetType) && typeOf<Pair<*, *>>().isSupertypeOf(entity.type)) {
         val subTargetType = targetType.arguments
 
-        return (originalEntity.value as Pair<*, *>).let { (first, second) ->
+        return (entity.value as Pair<*, *>).let { (first, second) ->
             val firstTargetType = subTargetType[0].type ?: return null
             val secondTargetType = subTargetType[1].type ?: return null
 
             first?.let {
                 val subOriginalType = it::class.starProjectedType
+                val subOriginalEntity = if (baseEntity != null) {
+                    OriginalEntity(originalEntity.value!!, subOriginalType)
+                } else  OriginalEntity(it, subOriginalType)
 
                 mapTo(
-                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                    originalEntity = subOriginalEntity,
                     targetType = firstTargetType,
                     baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
@@ -327,9 +343,12 @@ private fun mapComposite(
                 )
             } to second?.let {
                 val subOriginalType = it::class.starProjectedType
+                val subOriginalEntity = if (baseEntity != null) {
+                    OriginalEntity(originalEntity.value!!, subOriginalType)
+                } else  OriginalEntity(it, subOriginalType)
 
                 mapTo(
-                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                    originalEntity = subOriginalEntity,
                     targetType = secondTargetType,
                     baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
@@ -344,10 +363,10 @@ private fun mapComposite(
     }
 
     // If the target type and original type are both supertypes or the same type as triple, map each item
-    if (typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && typeOf<Triple<*, *, *>>().isSupertypeOf(originalEntity.type)) {
+    if (typeOf<Triple<*, *, *>>().isSupertypeOf(targetType) && typeOf<Triple<*, *, *>>().isSupertypeOf(entity.type)) {
         val subTargetType = targetType.arguments
 
-        return (originalEntity.value as Triple<*, *, *>).let { (first, second, third) ->
+        return (entity.value as Triple<*, *, *>).let { (first, second, third) ->
             val firstTargetType = subTargetType[0].type ?: return null
             val secondTargetType = subTargetType[1].type ?: return null
             val thirdTargetType = subTargetType[2].type ?: return null
@@ -355,9 +374,12 @@ private fun mapComposite(
             Triple(
                 first?.let {
                     val subOriginalType = it::class.starProjectedType
+                    val subOriginalEntity = if (baseEntity != null) {
+                        OriginalEntity(originalEntity.value!!, subOriginalType)
+                    } else  OriginalEntity(it, subOriginalType)
 
                     mapTo(
-                        originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                        originalEntity = subOriginalEntity,
                         targetType = firstTargetType,
                         baseEntity = baseEntity?.let { base -> it to base.second },
                         exclusions = exclusions,
@@ -369,9 +391,12 @@ private fun mapComposite(
                     )},
                 second?.let {
                 val subOriginalType = it::class.starProjectedType
+                    val subOriginalEntity = if (baseEntity != null) {
+                        OriginalEntity(originalEntity.value!!, subOriginalType)
+                    } else  OriginalEntity(it, subOriginalType)
 
-                mapTo(
-                    originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                    mapTo(
+                        originalEntity = subOriginalEntity,
                     targetType = secondTargetType,
                     baseEntity = baseEntity?.let { base -> it to base.second },
                     exclusions = exclusions,
@@ -383,9 +408,12 @@ private fun mapComposite(
                 )},
                 third?.let {
                     val subOriginalType = it::class.starProjectedType
+                    val subOriginalEntity = if (baseEntity != null) {
+                        OriginalEntity(originalEntity.value!!, subOriginalType)
+                    } else  OriginalEntity(it, subOriginalType)
 
                     mapTo(
-                        originalEntity = OriginalEntity(baseEntity?.first ?: it, subOriginalType),
+                        originalEntity = subOriginalEntity,
                         targetType = thirdTargetType,
                         baseEntity = baseEntity?.let { base -> it to base.second },
                         exclusions = exclusions,
