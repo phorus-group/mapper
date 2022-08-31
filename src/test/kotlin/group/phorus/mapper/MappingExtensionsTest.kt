@@ -1034,6 +1034,26 @@ internal class MappingExtensionsTest {
             assertEquals(3, result.houseTmp.address?.id)
             assertEquals("testAddress2", result.houseTmp.address?.value)
         }
+
+        @Test
+        fun `map from one object to another with a null subfield and subfield mappings`() {
+            val person = SubTestClasses.Person(
+                name = "testName",
+                house = null,
+            )
+
+            val result = person.mapToClass<SubTestClasses.PersonDTO>(functionMappings = mapOf(
+                "1" to ({ 22 } to ("house/number" to MappingFallback.NULL)),
+                "2" to ({ "testAddress2" } to ("house/address/value" to MappingFallback.NULL)),
+            ))
+
+            assertNotNull(result)
+
+            assertEquals("testName", result.name)
+            assertEquals(22, result.house.number)
+            assertNull(result.house.address?.id)
+            assertEquals("testAddress2", result.house.address?.value)
+        }
     }
 
     @Nested
@@ -1316,10 +1336,4 @@ internal class MappingExtensionsTest {
             assertEquals(17, result.numberOfGuests)
         }
     }
-
-    // TODO:
-    //  -x Crear un test como el primero, pero donde los campos del original entity y target class tengan diferente
-    //  nombre y se mapeen tambien mediante un mapping
-    //  -x Mismo a lo anterior pero con el mapfrom
-    //  - Mismo caso al primer test, pero con un house null en el original entity, y mappings que necesiten crear un house
 }
