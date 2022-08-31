@@ -896,7 +896,7 @@ internal class MappingExtensionsTest {
     class SubTestClasses {
         class Person(
             var name: String,
-            var house: House,
+            var house: House?,
         )
 
         class PersonDTO(
@@ -913,7 +913,7 @@ internal class MappingExtensionsTest {
             var name: String,
 
             @field:MapFrom(["house"])
-            var houseTmp: House?,
+            var houseTmp: House,
         )
 
         class House(
@@ -979,6 +979,60 @@ internal class MappingExtensionsTest {
             assertNull(result.house.number)
             assertEquals(3, result.house.address?.id)
             assertNull(result.house.address?.value)
+        }
+
+        @Test
+        fun `map from one object to another with a normal mapping and subfield mappings`() {
+            val person = SubTestClasses.Person(
+                name = "testName",
+                house = SubTestClasses.House(
+                    number = 14,
+                    address = SubTestClasses.Address(
+                        id = 3,
+                        value = "testAddress"
+                    )
+                )
+            )
+
+            val result = person.mapToClass<SubTestClasses.PersonDTO2>(mappings = mapOf(
+                "house" to ("houseTmp" to MappingFallback.NULL),
+            ),functionMappings = mapOf(
+                "1" to ({ 22 } to ("houseTmp/number" to MappingFallback.NULL)),
+                "2" to ({ "testAddress2" } to ("houseTmp/address/value" to MappingFallback.NULL)),
+            ))
+
+            assertNotNull(result)
+
+            assertEquals("testName", result.name)
+            assertEquals(22, result.houseTmp.number)
+            assertEquals(3, result.houseTmp.address?.id)
+            assertEquals("testAddress2", result.houseTmp.address?.value)
+        }
+
+        @Test
+        fun `map from one object to another with a MapFrom annotation and subfield mappings`() {
+            val person = SubTestClasses.Person(
+                name = "testName",
+                house = SubTestClasses.House(
+                    number = 14,
+                    address = SubTestClasses.Address(
+                        id = 3,
+                        value = "testAddress"
+                    )
+                )
+            )
+
+            val result = person.mapToClass<SubTestClasses.PersonDTOMapFrom>(functionMappings = mapOf(
+                "1" to ({ 22 } to ("houseTmp/number" to MappingFallback.NULL)),
+                "2" to ({ "testAddress2" } to ("houseTmp/address/value" to MappingFallback.NULL)),
+            ))
+
+            assertNotNull(result)
+
+            assertEquals("testName", result.name)
+            assertEquals(22, result.houseTmp.number)
+            assertEquals(3, result.houseTmp.address?.id)
+            assertEquals("testAddress2", result.houseTmp.address?.value)
         }
     }
 
@@ -1264,13 +1318,8 @@ internal class MappingExtensionsTest {
     }
 
     // TODO:
-    //  -x Crear test que mappee un original entity con un campo que sea un objeto con otro dentro, y que
-    //    que el target type tengo el mismo campo con un objeto con otro dentro de los mismo tipos, agregar mappings de
-    //    un campo de el primer objeto, y otro mapping de un subcampo del campo
-    //  - Crear un test igual al anterior, pero con una exclusion de un campo, y una exclusion de un subcampo
-    //    de otro campo no excluido
-    //  - Crear un test como el primero, pero donde los campos del original entity y target class tengan diferente
+    //  -x Crear un test como el primero, pero donde los campos del original entity y target class tengan diferente
     //  nombre y se mapeen tambien mediante un mapping
-    //  - Mismo a lo anterior pero con el mapfrom
-    //  - Mismo caso a lo anterior, pero con un house null en el original entity, y mappings que necesiten crear un house
+    //  -x Mismo a lo anterior pero con el mapfrom
+    //  - Mismo caso al primer test, pero con un house null en el original entity, y mappings que necesiten crear un house
 }

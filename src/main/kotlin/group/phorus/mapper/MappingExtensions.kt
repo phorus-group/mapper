@@ -580,7 +580,8 @@ private fun mapProperties(
                     functionMappings = subFieldMappedValues.map {
                         UUID.randomUUID().toString() to ({ it.value } to (it.key to MappingFallback.NULL))
                     }.toMap(),
-                    baseEntity = newBaseEntity
+                    baseEntity = newBaseEntity,
+                    useSettersOnly = useSettersOnly,
                 )
             }
         } else prop.let { it ?: return@forEach }.value
