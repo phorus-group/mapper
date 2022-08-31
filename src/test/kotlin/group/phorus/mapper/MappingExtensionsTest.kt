@@ -927,7 +927,7 @@ internal class MappingExtensionsTest {
     }
 
     @Nested
-    inner class `Test sub-fields and sub-exclusions` {
+    inner class `Test subfield mappings and subfield exclusions` {
 
         @Test
         fun `map from one object to another with subfield mappings`() {
