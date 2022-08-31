@@ -9,8 +9,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
-// TODO: Support vararg params
-
 @Suppress("UNUSED", "ClassName")
 internal class MappingExtensionsTest {
 
@@ -318,6 +316,16 @@ internal class MappingExtensionsTest {
         }
 
         @Test
+        fun `map from a int to a double - disable map primitives`() {
+            val result = 10.mapTo<Double>(mapPrimitives = false)
+
+            assertNotNull(result)
+
+            // The property is not mapped
+            assertNull(result)
+        }
+
+        @Test
         fun `map from a string to an int`() {
             val result = "10".mapTo<Int>()
 
@@ -325,6 +333,26 @@ internal class MappingExtensionsTest {
 
             // The property is mapped to an int
             assertEquals(10, result)
+        }
+
+        @Test
+        fun `map from a int to a string`() {
+            val result = 10.mapTo<String>()
+
+            assertNotNull(result)
+
+            // The property is mapped to a string
+            assertEquals("10", result)
+        }
+
+        @Test
+        fun `map from a int to a string - disable map primitives`() {
+            val result = 10.mapTo<String>(mapPrimitives = false)
+
+            assertNotNull(result)
+
+            // The property is not mapped
+            assertNull(result)
         }
     }
 
@@ -638,6 +666,11 @@ internal class MappingExtensionsTest {
             assertEquals("nameTest2", result.nameStr) // Only the name field was updated
             assertEquals("surnameTest", result.surname)
             assertEquals("87", result.ageStr)
+
+            // The instance was changed using setters
+            assertEquals("nameTest2", person.nameStr)
+            assertEquals("surnameTest", person.surname)
+            assertEquals("87", person.ageStr)
         }
 
         @Test
@@ -974,7 +1007,6 @@ internal class MappingExtensionsTest {
             var description: String,
         )
 
-
         // Only the first valid location will be used
         // If none of the locations is being able to parse anything, then the fallback will be used
         class RoomDTO(
@@ -988,6 +1020,19 @@ internal class MappingExtensionsTest {
             @field:MapFrom(["hotelRooms"])
             var roomDTOs: MutableList<RoomDTO>,
             var numberOfGuests: Int,
+        )
+
+        class PersonParentDTO(
+            @field:MapFrom(["../name"])
+            var roomName: String,
+            var nameStr: String,
+        )
+
+        class RoomParentDTO(
+            @field:MapFrom(["isGoingToFail", "alsoGoingToFail", "guest/name"])
+            val guestName: String,
+            val guestAge: String?,
+            val roomName: String?,
         )
     }
 
@@ -1130,9 +1175,9 @@ internal class MappingExtensionsTest {
 
             assertEquals(17, result.numberOfGuests)
         }
+    }
 
     // TODO:
     //  - Add map from tests with locations from parent objects too
     //  - Add subexclusions and submappings tests
-    }
 }

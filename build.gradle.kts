@@ -4,101 +4,110 @@ plugins {
     kotlin("jvm") version "1.6.0-M1"
     `maven-publish`
     `java-library`
+    signing
     jacoco
 }
 
 group = "group.phorus"
+description = "Kotlin based mapper with extra funcitonalities."
 version = "1.0.0"
+
 java.sourceCompatibility = JavaVersion.VERSION_17
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
 
 repositories {
     mavenCentral()
-    maven {
-        name = "gitlabPackageRegistry"
-        url = uri("https://gitlab.com/api/v4/groups/51305899/-/packages/maven")
-
-        credentials(HttpHeaderCredentials::class.java) {
-            (project.findProperty("gitlabPackageRegistryToken") as String?)
-                ?.also {
-                    name = "Private-Token"
-                    value = it
-                }
-                ?: also {
-                    name = "Deploy-Token"
-                    value = System.getenv("MAIN_DEPLOY_TOKEN_READONLY")
-                }
-        }
-        authentication {
-            val header by registering(HttpHeaderAuthentication::class)
-        }
-    }
 }
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation(kotlin("reflect"))
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
 }
 
-// Jacoco config
-tasks.jacocoTestReport {
-    executionData.setFrom(fileTree(buildDir).include("/jacoco/*.exec"))
+tasks {
+    // Jacoco config
+    jacocoTestReport {
+        executionData.setFrom(fileTree(buildDir).include("/jacoco/*.exec"))
 
-    reports {
-        xml.required.set(true)
-        csv.required.set(true)
+        reports {
+            xml.required.set(true)
+            csv.required.set(true)
+        }
     }
-}
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+    withType<Test> {
+        useJUnitPlatform()
 
-    finalizedBy(tasks.jacocoTestReport)
+        finalizedBy(jacocoTestReport)
 
-    // If parallel tests start failing, instead of disabling this, take a look at @Execution(ExecutionMode.SAME_THREAD)
-    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
-    systemProperty("junit.jupiter.execution.parallel.mode.default", "same_thread")
-    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-}
+        // If parallel tests start failing, instead of disabling this, take a look at @Execution(ExecutionMode.SAME_THREAD)
+        systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+        systemProperty("junit.jupiter.execution.parallel.mode.default", "same_thread")
+        systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xjsr305=strict", "-Xopt-in=kotlin.RequiresOptIn")
-        jvmTarget = "17"
+    withType<KotlinCompile> {
+        kotlinOptions {
+            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xopt-in=kotlin.RequiresOptIn")
+            jvmTarget = "17"
+        }
+    }
+
+    javadoc {
+        if (JavaVersion.current().isJava9Compatible) {
+            (options as StandardJavadocDocletOptions).addBooleanOption("html5", true)
+        }
     }
 }
 
 publishing {
     publications {
         create<MavenPublication>(project.name) {
+            groupId = "${project.group}"
+            artifactId = project.name
+            version = "${project.version}"
             from(components["java"])
+
+            pom {
+                name.set(project.name)
+                description.set(project.description)
+                url.set(System.getenv("CI_PROJECT_URL"))
+
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("irios.phorus")
+                        name.set("Martin Ivan Rios")
+                        email.set("irios@phorus.group")
+                        organization.set("Phorus Group")
+                        organizationUrl.set("https://phorus.group")
+                    }
+                }
+
+                scm {
+                    url.set(System.getenv("CI_PROJECT_URL"))
+                    connection.set("scm:git:${System.getenv("CI_PROJECT_URL")}.git")
+                    developerConnection.set("scm:git:${System.getenv("CI_PROJECT_URL")}.git")
+                }
+            }
         }
     }
+}
 
-    repositories {
-        maven {
-            name = "gitlabPackageRegistry"
-
-            val projectId = System.getenv("CI_PROJECT_ID")
-            url = uri("https://gitlab.com/api/v4/projects/$projectId/packages/maven")
-
-            credentials(HttpHeaderCredentials::class.java) {
-                (project.findProperty("gitlabPackageRegistryToken") as String?)
-                    ?.also {
-                        name = "Private-Token"
-                        value = it
-                    }
-                    ?: also {
-                        name = "Deploy-Token"
-                        value = System.getenv("MAIN_DEPLOY_TOKEN")
-                    }
-            }
-            authentication {
-                val header by registering(HttpHeaderAuthentication::class)
-            }
-        }
-    }
+signing {
+    sign(publishing.publications[project.name])
 }
