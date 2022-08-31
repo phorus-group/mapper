@@ -2,6 +2,7 @@ package group.phorus.mapper
 
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.isSupertypeOf
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
 import kotlin.reflect.jvm.reflect
 
@@ -140,6 +141,7 @@ private fun isExcluded(field: Field, exclusions: List<TargetField>): Boolean {
  *  In any of these cases, if the mapping fallback is null, we'll try to return a property wrapper with null,
  *    but if the target field is non-nullable we'll return null directly
  */
+@Suppress("UNCHECKED_CAST")
 @OptIn(ExperimentalReflectionOnLambdas::class)
 private fun processFunction(
     originalProp: OriginNodeInterface<*>?,
@@ -165,12 +167,6 @@ private fun processFunction(
 
     // Get the function input type
     val inputType = functionParam?.type
-
-    val returnType = function.reflect()?.returnType?.removeNullability()
-        // If it's null, try to get process the function as a KFunction
-        ?: runCatching { (function as KFunction<*>).returnType }.getOrNull()?.removeNullability()
-        // If the output type is null we cannot go further, return the exit value
-        ?: return@mapProp exitValue
 
     // If the original prop is null and function param is not optional or nullable, return the exit value
     if (originalProp?.value == null && functionParam?.isOptional == false && !functionParam.type.isMarkedNullable)
@@ -231,9 +227,9 @@ private fun processFunction(
 
     // If the target prop type is not a supertype or the same type as the function return
     //  type, then map the returned value
-    val returnProp = if (!targetField.type.isSupertypeOf(returnType)) {
+    val returnProp = if (!targetField.type.isSupertypeOf(returnValue.value::class.starProjectedType)) {
         mapTo(
-            originalEntity = OriginalEntity(returnValue.value, returnType),
+            originalEntity = OriginalEntity(returnValue.value, returnValue.value::class.starProjectedType),
             targetType = targetField.type,
         )
     } else returnValue.value

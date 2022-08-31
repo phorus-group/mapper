@@ -1,5 +1,6 @@
 package group.phorus.mapper
 
+import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.isSupertypeOf
@@ -577,7 +578,7 @@ private fun mapProperties(
                     targetType = targetField.value.type,
                     exclusions = subExclusions,
                     functionMappings = subFieldMappedValues.map {
-                        null to ({ it.value } to (it.key to MappingFallback.NULL))
+                        UUID.randomUUID().toString() to ({ it.value } to (it.key to MappingFallback.NULL))
                     }.toMap(),
                     baseEntity = newBaseEntity
                 )

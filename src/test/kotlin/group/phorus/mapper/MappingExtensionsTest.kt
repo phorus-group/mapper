@@ -892,6 +892,70 @@ internal class MappingExtensionsTest {
         }
     }
 
+
+    class SubTestClasses {
+        class Person(
+            var name: String,
+            var house: House,
+        )
+
+        class PersonDTO(
+            var name: String,
+            var house: House,
+        )
+
+        class PersonDTO2(
+            var name: String,
+            var houseTmp: House,
+        )
+
+        class PersonDTOMapFrom(
+            var name: String,
+
+            @field:MapFrom(["house"])
+            var houseTmp: House?,
+        )
+
+        class House(
+            var number: Int?,
+            var address: Address?,
+        )
+        class Address(
+            val id: Int?,
+            var value: String?,
+        )
+    }
+
+    @Nested
+    inner class `Test sub-fields and sub-exclusions` {
+
+        @Test
+        fun `map from one object to another with subfield mappings`() {
+            val person = SubTestClasses.Person(
+                name = "testName",
+                house = SubTestClasses.House(
+                    number = 14,
+                    address = SubTestClasses.Address(
+                        id = 3,
+                        value = "testAddress"
+                    )
+                )
+            )
+
+            val result = person.mapToClass<SubTestClasses.PersonDTO>(functionMappings = mapOf(
+                "1" to ({ 22 } to ("house/number" to MappingFallback.NULL)),
+                "2" to ({ "testAddress2" } to ("house/address/value" to MappingFallback.NULL)),
+            ))
+
+            assertNotNull(result)
+
+            assertEquals("testName", result.name)
+            assertEquals(22, result.house.number)
+            assertEquals(3, result.house.address?.id)
+            assertEquals("testAddress2", result.house.address?.value)
+        }
+    }
+
     @Nested
     inner class `Tests compounds` {
 
@@ -1174,6 +1238,13 @@ internal class MappingExtensionsTest {
     }
 
     // TODO:
-    //  - Add map from tests with locations from parent objects too
-    //  - Add subexclusions and submappings tests
+    //  -x Crear test que mappee un original entity con un campo que sea un objeto con otro dentro, y que
+    //    que el target type tengo el mismo campo con un objeto con otro dentro de los mismo tipos, agregar mappings de
+    //    un campo de el primer objeto, y otro mapping de un subcampo del campo
+    //  - Crear un test igual al anterior, pero con una exclusion de un campo, y una exclusion de un subcampo
+    //    de otro campo no excluido
+    //  - Crear un test como el primero, pero donde los campos del original entity y target class tengan diferente
+    //  nombre y se mapeen tambien mediante un mapping
+    //  - Mismo a lo anterior pero con el mapfrom
+    //  - Mismo caso a lo anterior, pero con un house null en el original entity, y mappings que necesiten crear un house
 }
