@@ -1,5 +1,9 @@
-package group.phorus.mapper
+package group.phorus.mapper.building
 
+import group.phorus.mapper.Field
+import group.phorus.mapper.OriginalEntity
+import group.phorus.mapper.Value
+import group.phorus.mapper.Wrapper
 import kotlin.reflect.*
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.isSupertypeOf
@@ -7,78 +11,77 @@ import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.starProjectedType
 
 /**
- * Creates a new entity based on another already existing one, useful when you want to use a base entity, but you don't
- *  want to be forced to only use setters for every property
- *
- * @param type of the class to build
- * @param properties to set with their value
- * @param baseEntity the entity to build the new one from
- * @return the built entity, or null
+ * Reified version of the [buildOrUpdateInternal] function.
+ * @see [buildOrUpdateInternal].
  */
-fun buildWithBaseEntity(
+inline fun <reified T: Any> buildOrUpdate(
+    properties: Map<Field, Value?>,
+    useSettersOnly: Boolean = false,
+    entity: T? = null,
+): T? = buildOrUpdateInternal(
+    type = typeOf<T>(),
+    properties = properties,
+    useSettersOnly = useSettersOnly,
+    entity = entity,
+) as T?
+
+/**
+ * Builds a new entity based on other one, but with the option of adding extra properties.
+ *
+ * @param type of the class to build.
+ * @param properties to set with their value.
+ * @param entity the entity to build the new one from.
+ * @return the built entity.
+ */
+internal fun buildWithEntity(
     type: KType,
-    properties: Map<String, Value?>,
-    baseEntity: Any,
-): Any? = buildOrUpdate(
+    properties: Map<Field, Value?>,
+    entity: Any,
+): Any? = buildOrUpdateInternal(
     type = type,
-    properties = OriginalEntity(baseEntity, type).properties.map { it.key to it.value.value }.toMap() + properties,
+    properties = OriginalEntity(entity, type).properties.map { it.key to it.value.value }.toMap() + properties,
     useSettersOnly = false,
 )
 
 /**
- * Reified version of the buildOrUpdate method.
- */
-inline fun <reified T: Any> buildOrUpdate(
-    properties: Map<String, Value?>,
-    useSettersOnly: Boolean = false,
-    baseEntity: T? = null,
-): T? = buildOrUpdate(
-    type = typeOf<T>(),
-    properties = properties,
-    useSettersOnly = useSettersOnly,
-    baseEntity = baseEntity,
-) as T?
-
-/**
- * Builds an object and sets its properties using a constructor
- * If some properties couldn't be set using the constructor, they'll be set through setters if possible.
- * You can also specify a base class to update instead of building a new one.
- * This function doesn't do mapping, the property value must be mapped beforehand, if the value type and the
- *  parameter type are different, then the value will be ignored
+ * Build or update an entity setting its properties through a constructor and setters.
  *
- * @param type of the class to build
- * @param properties to set with their value
- * @param useSettersOnly option to use setters only, not needed if a baseClass is used
- * @param baseEntity if specified, the entity will be updated using setters instead of creating a new one
- * @return the built or updated entity, or null
+ * If some properties couldn't be set using a constructor, they'll be set through setters if possible.
+ *
+ * *This function doesn't map anything, the property values must be of the right type, if not the property will be ignored.*
+ *
+ * @param type the entity type to build.
+ * @param properties to set with their value.
+ * @param useSettersOnly option to use setters only, not needed if an entity is used.
+ * @param entity if specified, the entity will be updated using setters instead of creating a new one.
+ * @return the built or updated entity, or null.
  */
-fun buildOrUpdate(
+fun buildOrUpdateInternal(
     type: KType,
-    properties: Map<String, Value?>,
+    properties: Map<Field, Value?>,
     useSettersOnly: Boolean = false,
-    baseEntity: Any? = null,
+    entity: Any? = null,
 ): Any? {
-
     // Build a new object only if base class is null
-    val (builtObject, unsetProperties) = if (baseEntity == null) {
+    val (builtObject, unsetProperties) = if (entity == null) {
         // If settersOnly is true, don't set any property through a constructor and treat all property as an unset
         if (useSettersOnly) {
-            buildWithConstructor(type).first to properties.keys
+            buildWithConstructorInternal(type).first to properties.keys
         } else {
-            buildWithConstructor(type, properties)
+            buildWithConstructorInternal(type, properties)
         }
     } else {
         // If base class is present, then use it and treat all properties as an unset
-        baseEntity to properties.keys
+        entity to properties.keys
     }
+
+    if (builtObject == null)
+        return null
 
     // Get class KProperties
     val kProperties = (type.classifier as KClass<*>).memberProperties
         .filter { it.name in unsetProperties } // Only include unset properties
         .associateWith { properties[it.name] } // Get the properties desired value
-
-    if (builtObject == null)
-        return null
 
     kProperties.forEach { prop ->
         val property = prop.key
@@ -108,34 +111,35 @@ fun buildOrUpdate(
 }
 
 /**
- * Reified version of the buildWithConstructor method.
+ * Reified version of the [buildWithConstructorInternal] function.
+ * @see [buildWithConstructorInternal].
  */
 @Suppress("UNCHECKED_CAST")
 inline fun <reified T: Any> buildWithConstructor(
-    properties: Map<String, Value?> = emptyMap(),
-): Pair<T?, List<String>> = buildWithConstructor(
+    properties: Map<Field, Value?> = emptyMap(),
+): Pair<T?, List<String>> = buildWithConstructorInternal(
     type = typeOf<T>(),
     properties = properties,
 ) as Pair<T?, List<String>>
 
 /**
- * Tries to create an object setting as many parameters as possible with the constructor
- * The function doesn't do mapping, the property value must be mapped beforehand, if the value type and the parameter type
- *  are different, then the value will be ignored
+ * Creates an entity setting as many parameters as possible with a constructor.
  *
- * @param type type of the class to build
- * @param properties properties to use in the object constructor with their value
- * @return the built object and the properties that couldn't be set with the constructor
+ * *This function doesn't map anything, the property values must be of the right type, if not the property will be ignored.*
+ *
+ * @param type type of the class to build.
+ * @param properties to set with their value.
+ * @return the built object and the properties that couldn't be set with a constructor.
  */
-fun buildWithConstructor(
+fun buildWithConstructorInternal(
     type: KType,
-    properties: Map<String, Value?> = emptyMap(),
+    properties: Map<Field, Value?> = emptyMap(),
 ): Pair<Any?, List<String>> {
 
     // Place to save the constructor params and the matched properties and values, or the optional or nullable
     //  constructor params
     // We wrap the values to be able to differentiate if the value was set to null explicitly or not
-    var constructorParams = mapOf<KParameter, PropertyWrapper<Value?>?>()
+    var constructorParams = mapOf<KParameter, Wrapper<Value?>?>()
 
     // Amount of unneeded params in the saved constructor
     var constructorUnneededParams = Integer.MAX_VALUE
@@ -147,7 +151,7 @@ fun buildWithConstructor(
     (type.classifier as KClass<*>).constructors.forEach nextConstructor@ { constr ->
 
         // Place to save the constructor params and the matched properties and values
-        val params = mutableMapOf<KParameter, PropertyWrapper<Value?>?>()
+        val params = mutableMapOf<KParameter, Wrapper<Value?>?>()
         var unneededParams = 0
 
         // Iterate through all the parameters of the constructor
@@ -183,7 +187,7 @@ fun buildWithConstructor(
 
                 // If the param is nullable, save the property and its null value
                 if (param.type.isMarkedNullable) {
-                    params[param] = PropertyWrapper(prop.value)
+                    params[param] = Wrapper(prop.value)
                 } else {
                     // If the param is not nullable, but it's optional, then we are not going to use the null value
                     //  at all, so we should increase the unneededParams count
@@ -192,7 +196,7 @@ fun buildWithConstructor(
             } else {
                 // Save the property and its value if the param and prop have the same types
                 if ((param.type.classifier as KClass<*>).starProjectedType.isSupertypeOf(prop.value!!::class.starProjectedType))
-                    params[param] = PropertyWrapper(prop.value)
+                    params[param] = Wrapper(prop.value)
             }
         }
 

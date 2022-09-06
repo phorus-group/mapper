@@ -1,5 +1,8 @@
-package group.phorus.mapper
+package group.phorus.mapper.mapping.functions
 
+import group.phorus.mapper.*
+import group.phorus.mapper.mapping.MappingFallback
+import group.phorus.mapper.mapping.mapTo
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.starProjectedType
@@ -7,43 +10,56 @@ import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
 import kotlin.reflect.jvm.reflect
 
 /**
- * Transforms a location string to a location list
+ * Transforms a location string to a location list.
+ *
  * @param location the location to be parsed, use "/" as field separators and ".." to refer to the parent node.
- *  Format examples:
- *      {field}/{field}
- *      ../{field}/field
- *  Note: Any single dot will be ignored, since it's considered as the current location
- * @return the location list
+ *
+ * For example:
+ *  - {field}/{field}
+ *  - ../{field}/{field}
+ *
+ * Note: Any single dot will be ignored, since it's considered as the current location.
+ *
+ * @return the location list.
  */
-fun parseLocation(location: String): List<String> =
+internal fun parseLocation(location: String): List<String> =
     location.split("/")
         .toMutableList()
         .apply { removeIf { it.isBlank() || it == "." } }
 
 
-enum class ProcessMappingFallback {
+/**
+ * Process mapping fallback.
+ */
+internal enum class ProcessMappingFallback {
     NULL, SKIP
 }
 
-fun MappingFallback.toProcessMappingFallback() =
+/**
+ * Transforms a [MappingFallback] to [ProcessMappingFallback].
+ *
+ * @receiver the mapping fallback to transform.
+ * @return the process mapping fallback.
+ */
+internal fun MappingFallback.toProcessMappingFallback() =
     when(this) {
         MappingFallback.NULL -> ProcessMappingFallback.NULL
         MappingFallback.CONTINUE -> ProcessMappingFallback.SKIP
     }
 
 /**
- * Returns a list of target class locations with the parsed values from the original entity
+ * Returns a map of target class locations with their mapped values.
  *
- * @param originalEntity original entity to take the values from
- * @param targetClass with the desired location
- * @param mappings mappings containing the original field, a modifier function (can be null), the target field, and a
+ * @param originalEntity the original entity to take the values from.
+ * @param targetClass the target class.
+ * @param mappings containing the original field, an optional mutation function, the target field, and a
  *  fallback used in case the function fails to process the values.
  * @param exclusions excluded fields from the target class, exclusions take priority
- *  over everything else
- * @return a map with the target class locations and mapped values
+ *  over everything else.
+ * @return a map of the target class locations and their mapped values.
  */
-fun processMappings(
-    originalEntity: OriginNodeInterface<*>,
+internal fun processMappings(
+    originalEntity: OriginalNodeInterface<*>,
     targetClass: TargetClass<*>,
     mappings: Map<OriginalField?, Pair<MappingFunction?, Pair<TargetField, ProcessMappingFallback>>>,
     exclusions: List<TargetField>,
@@ -55,7 +71,7 @@ fun processMappings(
             val targetField = targetClass.findProperty(parseLocation(mapping.value.second.first))
                 ?: return@mapNotNull null
 
-            val originalPropValue: PropertyWrapper<Any?>? = processFunction(
+            val originalPropValue: Wrapper<Any?>? = processFunction(
                 originalProp = originalProp,
                 function = mapping.value.first,
                 targetField = targetField,
@@ -63,19 +79,19 @@ fun processMappings(
             ) ?: if (originalProp == null) {
                 // If the original prop is null, skip the value or not based on the mapping fallback
                 if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
-                    PropertyWrapper(null)
+                    Wrapper(null)
                 } else null
             } else if (originalProp.value == null) {
                 // If the original prop value is null and the target property is not nullable, return null to skip
                 //  the mapping
                 if (targetField.type.isMarkedNullable) {
-                    PropertyWrapper(null)
+                    Wrapper(null)
                 } else null
             } else {
                 // If the mapping has a function and reaches this point, something failed
                 if (mapping.value.first != null) {
                     if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
-                        PropertyWrapper(null)
+                        Wrapper(null)
                     } else null
                 } else {
                     // If the target prop type is not a supertype or the same type as the original value type, then
@@ -88,9 +104,9 @@ fun processMappings(
                     //  of the target field
                     if (finalProp == null) {
                         if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
-                           PropertyWrapper(null)
+                           Wrapper(null)
                         } else null
-                    } else PropertyWrapper(finalProp)
+                    } else Wrapper(finalProp)
                 }
             }
 
@@ -99,11 +115,11 @@ fun processMappings(
         }.toMap()
 
 /**
- * Check if the target field or any of its parents is excluded
+ * Check if the target field or any of its parents are excluded.
  *
- * @param field to check
- * @param exclusions exclusions
- * @return true if the field is excluded, false otherwise
+ * @param field to check.
+ * @param exclusions the exclusions.
+ * @return true if the field is excluded, false otherwise.
  */
 private fun isExcluded(field: Field, exclusions: List<TargetField>): Boolean {
     var targetFieldExcluded = false
@@ -121,39 +137,44 @@ private fun isExcluded(field: Field, exclusions: List<TargetField>): Boolean {
 }
 
 /**
- * Process a function mapping, if any
+ * Process a function mapping if possible.
  *
- * @param originalProp original property
- * @param function function to execute, only functions with 1 or fewer parameters are accepted:
- *  If the original property value isn't the same type or a supertype of the function parameter (if present),
- *    we'll try to map it to the right type
- *  If the function return value is not the same type or a supertype of the target field, we'll try to map it
- *    to the right type
- * @param targetField target field
- * @return the final value after executing the desired function. If the final value cannot be mapped, null
- *  Possible causes to return a null value:
+ * @param originalProp original property.
+ * @param function function to execute, only functions with 1 or fewer parameters are accepted.
+ *
+ * Note that:
+ *  - If the original property value isn't the same type or a supertype of the function parameter (if present),
+ *    we'll try to map it to the expected type
+ *  - If the function return value is not the same type or a supertype of the target field, we'll try to map it
+ *    to the expected type
+ *
+ * @param targetField target field.
+ * @return the final value after executing the desired function. If the final value cannot be mapped, return null.
+ *
+ * Possible causes to return a null value:
  *  - The function is null
  *  - The function needs a non-nullable and non-optional parameter, but the original field doesn't exist or its null
  *  - The function return value is null or couldn't be mapped to the right type
  *  - The function doesn't return anything
  *  - The function needs more than 1 parameter
  *  - The function throws an exception
- *  In any of these cases, if the mapping fallback is null, we'll try to return a property wrapper with null,
- *    but if the target field is non-nullable we'll return null directly
+ *  
+ *  If the mapping fallback is null in any of these cases, we'll try to return a wrapper with null,
+ *    but if the target field is non-nullable we'll return null directly.
  */
 @Suppress("UNCHECKED_CAST")
 @OptIn(ExperimentalReflectionOnLambdas::class)
 private fun processFunction(
-    originalProp: OriginNodeInterface<*>?,
+    originalProp: OriginalNodeInterface<*>?,
     function: MappingFunction?,
     targetField: TargetNode<*>,
     fallback: ProcessMappingFallback,
-): PropertyWrapper<Any?>? = function?.let mapProp@{
+): Wrapper<Any?>? = function?.let mapProp@{
     // Value returned in case something fails in the mapping
-    // If the fallback is null, then return a property wrapper with a null value, if not
+    // If the fallback is null, then return a wrapper with a null value, if not
     //  return null to continue with the normal mapping
     val exitValue = if (fallback == ProcessMappingFallback.NULL && targetField.type.isMarkedNullable) {
-        PropertyWrapper<Any?>(null)
+        Wrapper<Any?>(null)
     } else null
 
     // If the function has more than 1 param, return the exit value
@@ -187,7 +208,7 @@ private fun processFunction(
 
     // Call the function and save the returned value
     val returnValue = runCatching {
-        PropertyWrapper(
+        Wrapper(
             // If the function param is null
             if (inputProp == null) {
                 // If the function param is null
@@ -222,7 +243,7 @@ private fun processFunction(
     // If the returned value is null, return it directly since we don't need to check the type
     if (returnValue.value == null)
         if (targetField.type.isMarkedNullable) {
-            return@mapProp PropertyWrapper<Any?>(null)
+            return@mapProp Wrapper<Any?>(null)
         } else return@mapProp null
 
     // If the target prop type is not a supertype or the same type as the function return
@@ -237,7 +258,7 @@ private fun processFunction(
     // If the mapped value is null, return it or return null based on the nullability of the target field
     if (returnProp == null) {
         if (targetField.type.isMarkedNullable) {
-            return@mapProp PropertyWrapper<Any?>(null)
+            return@mapProp Wrapper<Any?>(null)
         } else return@mapProp null
-    } else PropertyWrapper(returnProp)
+    } else Wrapper(returnProp)
 }

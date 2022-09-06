@@ -1,5 +1,7 @@
 package group.phorus.mapper
 
+import group.phorus.mapper.mapping.MapFrom
+import group.phorus.mapper.mapping.MappingFallback
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import kotlin.reflect.full.starProjectedType
@@ -10,7 +12,7 @@ import kotlin.test.assertNotNull
 /**
  * Utility function to use TargetClass with a reified class type
  */
-inline fun <reified T: Any> targetClass() = TargetClass(T::class, T::class.starProjectedType)
+internal inline fun <reified T: Any> targetClass() = TargetClass(T::class, T::class.starProjectedType)
 
 internal class TargetClassesTest {
 

@@ -1,10 +1,13 @@
-package group.phorus.mapper
+package group.phorus.mapper.mapping.functions
 
+import group.phorus.mapper.OriginalEntity
+import group.phorus.mapper.targetClass
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
 import kotlin.test.assertEquals
 
+@Suppress("UNUSED")
 internal class MappingFunctionsTest {
 
     @Test

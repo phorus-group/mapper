@@ -1,4 +1,4 @@
-package group.phorus.mapper
+package group.phorus.mapper.building
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
@@ -458,7 +458,7 @@ internal class BuildingFunctionsTest {
                 "address" to "testAddress",
             )
 
-            val result = buildOrUpdate(props, baseEntity = baseClass)
+            val result = buildOrUpdate(props, entity = baseClass)
 
             // Since the class was not built again the constructor used is still 0
             assertEquals(0, result?.constructorUsed)

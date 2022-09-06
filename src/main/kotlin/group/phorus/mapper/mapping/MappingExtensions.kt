@@ -1,5 +1,11 @@
-package group.phorus.mapper
+package group.phorus.mapper.mapping
 
+import group.phorus.mapper.*
+import group.phorus.mapper.building.buildOrUpdateInternal
+import group.phorus.mapper.building.buildWithEntity
+import group.phorus.mapper.mapping.functions.parseLocation
+import group.phorus.mapper.mapping.functions.processMappings
+import group.phorus.mapper.mapping.functions.toProcessMappingFallback
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -7,24 +13,52 @@ import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.typeOf
 
+/**
+ * The update option. Used to know if the mapper should update [fields][Field] to null, or not.
+ */
 enum class UpdateOption {
-    SET_NULLS, IGNORE_NULLS
+    /**
+     * Any null [field][Field] will be ignored, and only the non-null ones will be updated.
+     */
+    IGNORE_NULLS,
+
+    /**
+     * Any null and non-null [field][Field] will be updated.
+     */
+    SET_NULLS,
 }
 
 /**
- * TODO: Complete
+ * Maps one [entity][originalEntity] to a different [type][targetType].
  *
- * @param targetType target class type
- * @param exclusions list of original class field exclusions. Excludes any mapping using
- *  specifically any of the specified original fields.
+ * The function also offers multiple other options to control the way it maps the fields.
+ *
+ * @param originalEntity the original entity.
+ * @param targetType the target type.
+ * @param baseEntity a base entity, optional.
+ * @param exclusions a list of [target fields][TargetField] to exclude.
+ *
+ * @param mappings a map of fields to map forcefully, with the format:
+ * [OriginalField] - [TargetField] - [MappingFallback]
+ * @param functionMappings a map of fields to map forcefully with a mutating function, with the format:
+ * [OriginalField] - [MappingFunction] - [TargetField] - [MappingFallback]
+ * @param ignoreMapFromAnnotations boolean used to ignore or not the [@MapFrom][group.phorus.mapper.mapping.MapFrom]
+ * annotations in the target entity.
+ * @param useSettersOnly boolean used to forcefully use only setters or not.
+ * @param mapPrimitives boolean used to map or not primitives types. If true, [String] will be mapped to [Number]
+ * if necessary, and vice versa. Different implementations of [Number] will also be mapped between each other.
+ *
+ * The supported [Number] implementations are: [Double], [Float], [Long], [Int], [Short] and [Byte].
+ *
+ * @return the mapped entity.
  */
 fun mapTo(
-    originalEntity: OriginNodeInterface<*>,
+    originalEntity: OriginalNodeInterface<*>,
     targetType: KType,
     baseEntity: Pair<Any, UpdateOption>? = null,
     exclusions: List<TargetField> = emptyList(),
-    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
-    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
+    mappings: Mappings = emptyMap(),
+    functionMappings: FunctionMappings = emptyMap(),
     ignoreMapFromAnnotations: Boolean = false,
     useSettersOnly: Boolean = false,
     mapPrimitives: Boolean = true,
@@ -123,56 +157,60 @@ fun mapTo(
     // If base class is not null, and use setters is false, we'll use a different method that uses constructors to set
     //  as many properties as possible, this will always create a new instance instead of modifying the base entity
     return if (baseEntity != null && !useSettersOnly && mappedProps.isNotEmpty()) {
-        buildWithBaseEntity(
+        buildWithEntity(
             type = targetKType,
             properties = mappedProps,
-            baseEntity = baseEntity.first,
+            entity = baseEntity.first,
         )
     } else {
-        buildOrUpdate(
+        buildOrUpdateInternal(
             type = targetKType,
             properties = mappedProps,
             useSettersOnly = useSettersOnly,
-            baseEntity = baseEntity?.first,
+            entity = baseEntity?.first,
         )
     }
 }
 
 /**
- * Maps primitive types if possible
+ * Maps primitive types, if possible.
  *
- * @param targetType the target type
- * @param originalEntity the original entity
- * @param mapPrimitives boolean to enable the mapping between string and number primitives
- * @return null if the target type and the original entity are not primitives, else a property wrapper with containing
- *  the mapped value or null in case mapping is not possible
+ * @param targetType the target type.
+ * @param originalEntity the original entity.
+ * @param mapPrimitives boolean used to map or not primitives types. If true, [String] will be mapped to [Number]
+ * if necessary, and vice versa. Different implementations of [Number] will also be mapped between each other.
+ *
+ * The supported [Number] implementations are: [Double], [Float], [Long], [Int], [Short] and [Byte].
+ *
+ * @return a wrapper containing the mapped value or a wrapper containing null in case mapping is not possible,
+ * or null if the target type and the original entity are not both primitives.
  */
 private fun mapPrimitives(
     targetType: KType,
-    originalEntity: OriginNodeInterface<*>,
+    originalEntity: OriginalNodeInterface<*>,
     mapPrimitives: Boolean,
-): PropertyWrapper<Any?>? {
+): Wrapper<Any?>? {
     // If target type is a primitive or any
     if (typeOf<String>().isSupertypeOf(targetType) || typeOf<Number>().isSupertypeOf(targetType) || targetType.isSupertypeOf(typeOf<Any>())) {
         // But the original entity type is not a primitive, the value can't be mapped, so return null
         if (!typeOf<String>().isSupertypeOf(originalEntity.type)
             && !typeOf<Number>().isSupertypeOf(originalEntity.type)
             && !originalEntity.type.isSupertypeOf(typeOf<Any>()))
-            return PropertyWrapper(null)
+            return Wrapper(null)
     } else { // If the target type is not a primitive
         // If the original entity type is also not a primitive, return null
         //  to continue the mapTo function, since the values could be mapped
         return if (!typeOf<String>().isSupertypeOf(originalEntity.type) && !typeOf<Number>().isSupertypeOf(originalEntity.type)) {
             null
-        } else PropertyWrapper(null)
+        } else Wrapper(null)
         // If the original type is not a primitive, the value can't be mapped, so return null
     }
 
     // If the types are the same, return the value directly
     if (targetType.isSupertypeOf(originalEntity.type))
-        return PropertyWrapper(originalEntity.value)
+        return Wrapper(originalEntity.value)
 
-    if (!mapPrimitives) return PropertyWrapper(null)
+    if (!mapPrimitives) return Wrapper(null)
 
     // If the types are Number, return the value mapped with the native function
     if (typeOf<Number>().isSupertypeOf(targetType) && typeOf<Number>().isSupertypeOf(originalEntity.type)) {
@@ -185,7 +223,7 @@ private fun mapPrimitives(
             typeOf<Byte>() -> (originalEntity.value as Number).toByte()
             else -> null
         }
-        return value?.let { PropertyWrapper(it) }
+        return value?.let { Wrapper(it) }
     }
 
     if (typeOf<Number>().isSupertypeOf(targetType) && typeOf<String>().isSupertypeOf(originalEntity.type)) {
@@ -198,34 +236,51 @@ private fun mapPrimitives(
             typeOf<Byte>() -> (originalEntity.value as String).toByte()
             else -> null
         }}.getOrNull()
-        return value?.let { PropertyWrapper(it) }
+        return value?.let { Wrapper(it) }
     }
 
     if (typeOf<String>().isSupertypeOf(targetType) && typeOf<Number>().isSupertypeOf(originalEntity.type))
-        return PropertyWrapper(originalEntity.value.toString())
+        return Wrapper(originalEntity.value.toString())
 
-    return PropertyWrapper(null)
+    return Wrapper(null)
 }
 
 /**
- * Map composite classes, if possible
+ * Map composite classes, if possible.
  *
- * @param targetType the target type
- * @param originalEntity the original entity
- * @return null if the target type and the original entity type aren't supertypes of iterable, map, pair, or triple.
- *  Else, return a property wrapper containing the mapped values or null in case mapping is not possible
+ * The supported classes are: [List], [Set], [Map], [Pair] and [Triple].
+ *
+ * @param originalEntity the original entity.
+ * @param targetType the target type.
+ * @param baseEntity a base entity, optional.
+ * @param exclusions a list of [target fields][TargetField] to exclude.
+ *
+ * @param mappings a map of fields to map forcefully, with the format:
+ * [OriginalField] - [TargetField] - [MappingFallback]
+ * @param functionMappings a map of fields to map forcefully with a mutating function, with the format:
+ * [OriginalField] - [MappingFunction] - [TargetField] - [MappingFallback]
+ * @param ignoreMapFromAnnotations boolean used to ignore or not the [@MapFrom][group.phorus.mapper.mapping.MapFrom]
+ * annotations in the target entity.
+ * @param useSettersOnly boolean used to forcefully use only setters or not.
+ * @param mapPrimitives boolean used to map or not primitives types. If true, [String] will be mapped to [Number]
+ * if necessary, and vice versa. Different implementations of [Number] will also be mapped between each other.
+ *
+ * The supported [Number] implementations are: [Double], [Float], [Long], [Int], [Short] and [Byte].
+ *
+ * @return a wrapper containing the mapped values or a wrapper containing null in case mapping is not possible,
+ * or null if the target type and the original entity type aren't supertypes of [Iterable], [Map], [Pair], or [Triple].
  */
 private fun mapComposite(
-    originalEntity: OriginNodeInterface<*>,
+    originalEntity: OriginalNodeInterface<*>,
     targetType: KType,
     baseEntity: Pair<Any, UpdateOption>? = null,
     exclusions: List<TargetField> = emptyList(),
-    mappings: Map<OriginalField, Pair<TargetField, MappingFallback>> = emptyMap(),
-    functionMappings: Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>> = emptyMap(),
+    mappings: Mappings = emptyMap(),
+    functionMappings: FunctionMappings = emptyMap(),
     ignoreMapFromAnnotations: Boolean,
     useSettersOnly: Boolean,
     mapPrimitives: Boolean,
-): PropertyWrapper<Any?>? {
+): Wrapper<Any?>? {
 
     val entity = if (baseEntity != null) {
         OriginalEntity(baseEntity.first, targetType)
@@ -267,7 +322,7 @@ private fun mapComposite(
                 value.toSet()
             } else value
 
-            PropertyWrapper(finalValue)
+            Wrapper(finalValue)
         }
     }
 
@@ -314,7 +369,7 @@ private fun mapComposite(
                     mapPrimitives = mapPrimitives,
                 )
             }
-        }.toMap().let { value -> PropertyWrapper(value) }
+        }.toMap().let { value -> Wrapper(value) }
     }
 
     // If the target type and original type are both supertypes or the same type as pair, map each item
@@ -360,7 +415,7 @@ private fun mapComposite(
                     mapPrimitives = mapPrimitives,
                 )
             }
-        }.let { value -> PropertyWrapper(value) }
+        }.let { value -> Wrapper(value) }
     }
 
     // If the target type and original type are both supertypes or the same type as triple, map each item
@@ -425,30 +480,33 @@ private fun mapComposite(
                         mapPrimitives = mapPrimitives,
                     )},
             )
-        }.let { value -> PropertyWrapper(value) }
+        }.let { value -> Wrapper(value) }
     }
 
     // If target type is composite but original type is not, or vice versa, we cannot map the values,
     //  return property value null
-    return PropertyWrapper(null)
+    return Wrapper(null)
 }
 
 /**
- * Return the mapped properties from the mapped values, the MapFrom annotation, or the original entity, in that priority
+ * Returns the mapped properties from: the already mapped [values][Value], or the [@MapFrom][MapFrom] annotation,
+ * or the original entity, in that order.
  *
- * @param originalEntity the original entity
- * @param targetClass the target class
- * @param baseEntity a base entity, optional
- * @param exclusions exclusions
- * @param mappedValues manually mapped values
- * @param ignoreMapFromAnnotations option used to ignore the MapFrom annotations
- * @param useSettersOnly option used to use only setters
+ * @param originalEntity the original entity.
+ * @param targetClass the target class.
+ * @param baseEntity a base entity, optional.
+ * @param exclusions a list of [target fields][TargetField] to exclude.
+ * @param mappedValues the manually mapped values.
+ * @param ignoreMapFromAnnotations boolean used to ignore or not the [@MapFrom][group.phorus.mapper.mapping.MapFrom]
+ * annotations in the target entity.
+ * @param useSettersOnly boolean used to forcefully use only setters or not.
+ * @return a map containing all the [target fields][TargetField] and their [values][Value].
  */
 private fun mapProperties(
-    originalEntity: OriginNodeInterface<*>,
+    originalEntity: OriginalNodeInterface<*>,
     targetClass: TargetClass<*>,
     baseEntity: Pair<Any, UpdateOption>?,
-    exclusions: List<String>,
+    exclusions: List<TargetField>,
     mappedValues: Map<TargetField, Value?>,
     ignoreMapFromAnnotations: Boolean,
     useSettersOnly: Boolean,
@@ -464,14 +522,14 @@ private fun mapProperties(
         if (targetFieldName in exclusions)
             return@forEach
 
-        var prop: PropertyWrapper<Any?>? = null
+        var prop: Wrapper<Any?>? = null
         if (mappedValues.containsKey(targetFieldName)) {
             // If the target field has been mapped with a mapping or a function mapping, use that mapped value
-            prop = PropertyWrapper(mappedValues[targetFieldName])
+            prop = Wrapper(mappedValues[targetFieldName])
         } else if (targetField.value.mapFrom != null) {
             // If the target field has a mapFrom annotation, use its value
             val mapFromMappedValue = if (!ignoreMapFromAnnotations) {
-                var mapFromValue: OriginNodeInterface<*>? = null
+                var mapFromValue: OriginalNodeInterface<*>? = null
                 for (location in targetField.value.mapFrom!!.locations) {
                     val mapFromProp = originalEntity.findProperty(parseLocation(location))
                     if (mapFromProp != null) {
@@ -485,13 +543,13 @@ private fun mapProperties(
 
             prop = if (mapFromMappedValue != null) {
                 if (mapFromMappedValue.value != null && targetField.value.type.isSupertypeOf(mapFromMappedValue.type)) {
-                    PropertyWrapper(mapFromMappedValue.value)
+                    Wrapper(mapFromMappedValue.value)
                 } else if (mapFromMappedValue.value != null) {
-                    PropertyWrapper(mapTo(originalEntity = mapFromMappedValue, targetType= targetField.value.type))
-                } else PropertyWrapper(null)
+                    Wrapper(mapTo(originalEntity = mapFromMappedValue, targetType= targetField.value.type))
+                } else Wrapper(null)
             } else {
                 if (targetField.value.mapFrom!!.fallback == MappingFallback.NULL) {
-                    PropertyWrapper(null)
+                    Wrapper(null)
                 } else null
             }
         }
@@ -515,7 +573,7 @@ private fun mapProperties(
 
             prop = if (value == null && baseEntity?.second != UpdateOption.SET_NULLS) {
                 null
-            } else PropertyWrapper(value)
+            } else Wrapper(value)
         }
 
         // Get the subfield mapped values, if any
@@ -548,11 +606,11 @@ private fun mapProperties(
                     parseLocation(it.key).size == 1
                 }
 
-                val newProp = buildOrUpdate(
+                val newProp = buildOrUpdateInternal(
                     type = targetField.value.type,
                     properties = nextMappedValues,
                     useSettersOnly = useSettersOnly,
-                    baseEntity = newBaseEntity,
+                    entity = newBaseEntity,
                 )
                 if (newProp != null) {
                     val newPropEntity = originalEntity.properties[targetFieldName]?.apply {

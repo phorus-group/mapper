@@ -1,7 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.net.URL
+import java.time.LocalDate
 
 plugins {
     kotlin("jvm") version "1.6.0-M1"
+    id("org.jetbrains.dokka") version "1.7.10"
     `maven-publish`
     `java-library`
     signing
@@ -13,11 +16,8 @@ description = "Kotlin based mapper with extra funcitonalities."
 version = "1.0.0"
 
 java.sourceCompatibility = JavaVersion.VERSION_17
-
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
+java.withSourcesJar()
+java.withJavadocJar()
 
 repositories {
     mavenCentral()
@@ -31,6 +31,9 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
 }
+
+
+val repoUrl = System.getenv("CI_PROJECT_URL") ?: "not defined"
 
 tasks {
     // Jacoco config
@@ -61,10 +64,36 @@ tasks {
         }
     }
 
-    javadoc {
-        if (JavaVersion.current().isJava9Compatible) {
-            (options as StandardJavadocDocletOptions).addBooleanOption("html5", true)
+    dokkaHtml.configure {
+        val branch = System.getenv("CI_COMMIT_BRANCH") ?: "not defined"
+
+        dokkaSourceSets {
+            configureEach {
+                reportUndocumented.set(true)
+                platform.set(org.jetbrains.dokka.Platform.jvm)
+
+                sourceRoot(file("src"))
+
+                sourceLink {
+                    localDirectory.set(file("src/main/kotlin"))
+                    remoteUrl.set(URL("$repoUrl/-/tree/$branch/src/main/kotlin"))
+                    remoteLineSuffix.set("#L")
+                }
+            }
         }
+
+        val currentYear = LocalDate.now().year
+        pluginsMapConfiguration.set(mapOf("org.jetbrains.dokka.base.DokkaBase" to
+                " {\"footerMessage\":" +
+                "\"© $currentYear Phorus Group - Licensed under the " +
+                "<a target=\\\"_blank\\\" href=\\\"$repoUrl/-/tree/$branch/LICENSE\\\">Apache 2 license</a>.\"}"
+            )
+        )
+    }
+
+    named<Jar>("javadocJar") {
+        from(dokkaHtml)
+        dependsOn(dokkaHtml)
     }
 }
 
@@ -79,7 +108,7 @@ publishing {
             pom {
                 name.set(project.name)
                 description.set(project.description)
-                url.set(System.getenv("CI_PROJECT_URL"))
+                url.set(repoUrl)
 
                 licenses {
                     license {
@@ -99,7 +128,7 @@ publishing {
                 }
 
                 scm {
-                    url.set(System.getenv("CI_PROJECT_URL"))
+                    url.set(repoUrl)
                     connection.set("scm:git:${System.getenv("CI_PROJECT_URL")}.git")
                     developerConnection.set("scm:git:${System.getenv("CI_PROJECT_URL")}.git")
                 }

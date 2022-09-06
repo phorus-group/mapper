@@ -6,25 +6,45 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
 
 /**
- * Origin classes common interface, used to iterate bidirectionally through the nodes
- * @param T the contained class type
+ * [OriginalEntity] and [OriginalNode] common interface.
+ * Contains the [findProperty] function and common fields.
+ *
+ * @param T the wrapped entity type.
  */
-interface OriginNodeInterface<T> {
-
-    val parent: OriginNodeInterface<*>?
-        get() = null
-
-    var type: KType
-    var value: Any?
-    val properties: Map<String, OriginNode<T, *>>
+interface OriginalNodeInterface<T> {
 
     /**
-     * Looks for a node in a specific location.
-     *
-     * @param location location of the desired node, formatted as a List<String>. Location example: ["pet", "name"]
-     * @return the node, or null if it doesn't exist
+     * The parent entity, or null if it doesn't exist.
      */
-    fun findProperty(location: List<String>): OriginNodeInterface<*>? {
+    val parent: OriginalNodeInterface<*>?
+        get() = null
+
+    /**
+     * The entity type.
+     */
+    var type: KType
+
+    /**
+     * The entity.
+     */
+    var value: Any?
+
+    /**
+     * The entity properties presented in a [Map] with the property name as key, and the property
+     * wrapped with [OriginalNode] as value.
+     */
+    val properties: Map<Field, OriginalNode<T, *>>
+
+    /**
+     * Looks for a [node][OriginalNodeInterface] in a specific location.
+     *
+     * @param location location of the desired node, formatted as a [list][List] of [fields][Field].
+     *
+     * For example: {"pet", "name"}
+     *
+     * @return the found [node][OriginalNodeInterface], or null if it doesn't exist.
+     */
+    fun findProperty(location: List<Field>): OriginalNodeInterface<*>? {
 
         // If the location list is empty, return null
         if (location.isEmpty())
@@ -47,43 +67,67 @@ interface OriginNodeInterface<T> {
 }
 
 /**
- * Wrapper that allows you to traverse through the instance of an object (entity) more comfortably
- * @param T entity type
- * @param value entity
+ * Implementation of the [OriginalNodeInterface] interface.
+ * Wraps around an entity of [type][type] [T].
+ *
+ * @param T the entity type.
+ * @param value the entity.
+ * @param type the [T] type as a [KType].
+ * This is required since kotlin cannot extract a [KType] from a class without loosing its type arguments.
  */
 class OriginalEntity<T: Any>(
     value: T,
-    override var type: KType,
-) : OriginNodeInterface<T> {
 
+    /**
+     * @see [OriginalNodeInterface.type]
+     */
+    override var type: KType,
+) : OriginalNodeInterface<T> {
+
+    /**
+     * @see [OriginalNodeInterface.value]
+     */
     override var value: Any? = value
 
     /**
-     * Entity properties
+     * @see [OriginalNodeInterface.properties]
      */
-    override val properties: Map<String, OriginNode<T, *>> by lazy { value::class.memberProperties
-        .associate { prop -> prop.name to OriginNode(this, prop) } }
+    override val properties: Map<Field, OriginalNode<T, *>> by lazy { value::class.memberProperties
+        .associate { prop -> prop.name to OriginalNode(this, prop) } }
 }
 
 /**
- * Wrapper that allows you to traverse through the properties of an object (entity) more comfortably
- * @param T parent entity type
- * @param parent parent entity, used to get the property value
- * @param property property
+ * Implementation of the [OriginalNodeInterface] interface.
+ * Wraps around a property of type [B].
+ *
+ * @param T the parent type.
+ * @param B the entity type.
+ * @param parent the entity parent.
+ * @param property the property of type [B].
  */
-class OriginNode<T, B>(
-    override val parent: OriginNodeInterface<T>,
+class OriginalNode<T, B>(
+    /**
+     * @see [OriginalNodeInterface.parent]
+     */
+    override val parent: OriginalNodeInterface<T>,
     property: KProperty<B>,
-) : OriginNodeInterface<B> {
+) : OriginalNodeInterface<B> {
 
+    /**
+     * @see [OriginalNodeInterface.type]
+     */
     override var type: KType = property.returnType
+
+    /**
+     * @see [OriginalNodeInterface.value]
+     */
     override var value: Any? = runCatching { property.getter.call(parent.value) }.getOrNull()
 
     /**
-     * Sub properties, null if value is null
+     * @see [OriginalNodeInterface.properties]
      */
-    override val properties: Map<String, OriginNode<B, *>> by lazy {
+    override val properties: Map<Field, OriginalNode<B, *>> by lazy {
         value?.let { (type.classifier as KClass<*>).memberProperties
-            .associate { prop -> prop.name to OriginNode(this, prop) }} ?: emptyMap()
+            .associate { prop -> prop.name to OriginalNode(this, prop) }} ?: emptyMap()
     }
 }
