@@ -32,6 +32,13 @@ dependencies {
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
 }
 
+configurations.all {
+    resolutionStrategy {
+        // Force new version because of: https://nvd.nist.gov/vuln/detail/CVE-2022-36033
+        force("org.jsoup:jsoup:1.15.3")
+    }
+}
+
 
 val repoUrl = System.getenv("CI_PROJECT_URL") ?: "not defined"
 
