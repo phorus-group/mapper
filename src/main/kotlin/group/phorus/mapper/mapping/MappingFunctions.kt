@@ -37,7 +37,6 @@ enum class UpdateOption {
  * @param targetType the target type.
  * @param baseEntity a base entity, optional.
  * @param exclusions a list of [target fields][TargetField] to exclude.
- *
  * @param mappings a map of fields to map forcefully, with the format:
  * [OriginalField] - [TargetField] - [MappingFallback]
  * @param functionMappings a map of fields to map forcefully with a mutating function, with the format:

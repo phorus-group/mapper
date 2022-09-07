@@ -149,27 +149,64 @@ val person = Person(name = "John", surname = "Wick")
 val personUpdate = Person(surname = "Lennon")
 
 person.updateFrom(personUpdate)
-println(person)
 
+println(person)
 // out: Person(name = "John", surname = "Lennon")
 ```
 </details>
 
 ### Advanced usage
 
-TODO
+You can use certain options to fine-tune the way the functions work.
+
+These extra options are: `exclusions`, `mappings`, `functionMappings`, among others.
+
+There is also more advanced functionality, such as the @MapFrom annotations, and the way functions process 
+primitives and different composite classes like `Iterable`, `Map`, `Pair`, and `Triple`.
 
 <details open>
 <summary>More information</summary>
 
 #### Exclusions
 
-TODO
+The exclusions option allows you to add a list of target field exclusions.
+These are fields of the final class that will be completely ignored.
+
+If the excluded field is not nullable, doesn't have a default value, and it's required to build the new object,
+the object that cannot be built because of the missing value will be set to null. If that object is the main one,
+the function will return null.
 
 <details open>
 <summary>Examples</summary>
 
-TODO
+```kotlin
+val user = User(name = "John", surname = "Wick")
+
+val userDTO = user.mapTo<UserDTO>(exclusions = listOf(UserDTO::name))
+
+println(userDTO)
+// out: UserDTO(name = null, surname = "Wick")
+```
+
+```kotlin
+val user = User(name = "John", surname = "Wick")
+
+// If the surname field is not nullable, the object cannot be built, so the function will return null.
+val userDTO = user.mapTo<UserDTO>(exclusions = listOf(UserDTO::surname))
+
+println(userDTO)
+// out: null
+```
+
+```kotlin
+val user = User(name = "John", surname = "Wick", data = Data(password = "password hash"))
+
+// If the password field in the Data class is not nullable, the object cannot be built, so Data will be set to null.
+val userDTO = user.mapToClass<UserDTO>(exclusions = listOf("data/password"))
+
+println(userDTO)
+// out: UserDTO(name = "John", surname = "Wick", data = null)
+```
 </details>
 
 #### Mappings
