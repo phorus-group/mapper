@@ -3,7 +3,7 @@ package group.phorus.mapper.mapping
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import group.phorus.mapper.mapping.MappingExtensionsTest.TestClasses.*
+import group.phorus.mapper.mapping.MappingFunctionsTest.TestClasses.*
 import group.phorus.mapper.mapping.overloads.mapTo
 import group.phorus.mapper.mapping.overloads.mapToClass
 import group.phorus.mapper.mapping.overloads.updateFrom
@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
 @Suppress("UNUSED", "ClassName")
-internal class MappingExtensionsTest {
+internal class MappingFunctionsTest {
 
     class TestClasses {
 

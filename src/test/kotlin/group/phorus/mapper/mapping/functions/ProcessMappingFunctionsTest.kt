@@ -8,7 +8,7 @@ import kotlin.reflect.typeOf
 import kotlin.test.assertEquals
 
 @Suppress("UNUSED")
-internal class MappingFunctionsTest {
+internal class ProcessMappingFunctionsTest {
 
     @Test
     fun `parse a location string`() {

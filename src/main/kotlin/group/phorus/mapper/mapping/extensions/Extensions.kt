@@ -20,7 +20,7 @@ import kotlin.reflect.typeOf
  * ```
  * val user = User(name = "John", surname = "Wick", data = Data(password = "password hash"))
  *
- * val userDTO = user.mapTo<UserDTO>(exclusions = listOf("data/password"))
+ * val userDTO = user.mapToClass<UserDTO>(exclusions = listOf("data/password"))
  * ```
  *
  * @receiver the entity to map.
