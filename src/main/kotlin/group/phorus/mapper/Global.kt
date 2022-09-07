@@ -1,6 +1,7 @@
 package group.phorus.mapper
 
 import group.phorus.mapper.mapping.MappingFallback
+import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
 
@@ -43,10 +44,22 @@ typealias Value = Any
 typealias Mappings = Map<OriginalField, Pair<TargetField, MappingFallback>>
 
 /**
+ * a map of fields to map forcefully, with the format:
+ * [OriginalField][KProperty] - [TargetField][KProperty] - [MappingFallback]
+ */
+typealias KMappings = Map<KProperty<*>, Pair<KProperty<*>, MappingFallback>>
+
+/**
  * A map of fields to map forcefully with a mutating function, with the format:
  * [OriginalField] - [MappingFunction] - [TargetField] - [MappingFallback]
  */
 typealias FunctionMappings = Map<OriginalField?, Pair<MappingFunction, Pair<TargetField, MappingFallback>>>
+
+/**
+ * A map of fields to map forcefully with a mutating function, with the format:
+ * [OriginalField][KProperty] - [MappingFunction] - [TargetField][KProperty] - [MappingFallback]
+ */
+typealias KFunctionMappings = Map<KProperty<*>?, Pair<MappingFunction, Pair<KProperty<*>, MappingFallback>>>
 
 /**
  * A value wrapper.

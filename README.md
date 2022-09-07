@@ -4,13 +4,15 @@
 <a href='https://gitlab.com/phorus-group/public/development/libraries/mapper/-/pipelines?ref=main'><img src='https://gitlab.com/phorus-group/public/development/libraries/mapper/badges/main/pipeline.svg'></a>
 [![GitLab license](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
-Mapper that allows you to transform one object to another, or update an object based on the properties of another.
+Mapper that allows you to transform an object to another, or update an object based on the properties of another.
 
-The conversion is done using reflection, mapping properties with the same name and considering extra options like: 
+The conversion is done through reflection and will map any properties with the same name in original object and 
+the target class.
+It will also consider extra options like: 
 `exclusions`, `mappings`, `functionMappings`, and `@MapFrom` annotations.
 
-All functionality can be accessed via the following extension functions: `Any.mapTo<Type>()`, `Any.mapToClass<Type>()`, 
-and `Any.updateFrom(object)`. To learn more, see [Getting started](#getting-started).
+All the functionality can be accessed via the following extension functions: `Any.mapTo<Type>()`, `Any.mapToClass<Type>()`, 
+`Any.updateFrom(object)`, and `Any.updateFromObject(object)`. To learn more, see [Getting started](#getting-started).
 
 ### Notes
 
@@ -37,7 +39,7 @@ and `Any.updateFrom(object)`. To learn more, see [Getting started](#getting-star
       - [Function mappings](#function-mappings)
       - [@MapFrom annotation](#mapfrom-annotation)
       - [Primitives](#primitives)
-      - [Composites: Collections, Map, Pair, Triple](#composites-collections-map-pair-triple)
+      - [Composites: Iterable, Map, Pair, Triple](#composites-iterable-map-pair-triple)
 - [Building and Contributing](#building-and-contributing)
 - [Authors and acknowledgment](#authors-and-acknowledgment)
 
@@ -47,7 +49,7 @@ and `Any.updateFrom(object)`. To learn more, see [Getting started](#getting-star
 
 - Allows you to transform an object to another type using reflection:
   - Define `exclusions` to exclude fields you are not interested in mapping.
-  - Define `mappings`, to map two fields with different names.
+  - Define `mappings` to map two fields with different names.
   - Define  `functionMappings` to map two fields with different names through a mutating function.
   - Map fields based on what is defined in an `@MapFrom` annotation.
   - Map `Number` and `String` primitives between each other if necessary.
@@ -65,29 +67,9 @@ and `Any.updateFrom(object)`. To learn more, see [Getting started](#getting-star
 
 ### Installation
 
-Make sure that the `mavenCentral` (or any of its mirrors) is added to the repository list of the project, if it doesn't already exist (usually this is the root project):
+Make sure that the `mavenCentral` (or any of its mirrors) is added to the repository list of the project.
 
-<details open>
-<summary>Kotlin</summary>
-
-```kotlin
-repositories {
-    mavenCentral()
-}
-```
-</details>
-
-<details>
-<summary>Groovy</summary>
-
-```groovy
-repositories {
-  mavenCentral()
-}
-```
-</details>
-
-Binaries and dependency information for Maven and Gradle and others can be found at [http://search.maven.org](https://search.maven.org/search?q=g:group.phorus%20AND%20a:mapper).
+Binaries and dependency information for Maven and Gradle can be found at [http://search.maven.org](https://search.maven.org/search?q=g:group.phorus%20AND%20a:mapper).
 
 <details open>
 <summary>Gradle</summary>
@@ -119,7 +101,19 @@ implementation("group.phorus:mapper:x.y.z")
 
 ### Usage
 
-Usage examples:
+All the functionality can be accessed via the following extension functions:
+- `Any.mapTo<Type>()`: transforms an object to another. (Recommended option)
+- `Any.mapToClass<Type>()`: transforms an object to another, but accepts Strings instead of KProperties in the
+  extra options.
+- `Any.updateFrom(object)`: updates an object based on the properties of another. (Recommended option)
+- `Any.updateFromObject(object)`: updates an object based on the properties of another,
+  but accepts Strings instead of KProperties in the extra options.
+
+It's recommended to use the functions that accept KProperties in the extra options, since they are recognized by the IDEs
+and thus, they are considered in operations like refactors.
+
+One advantage of using String fields instead of KProperties, is that you can specify more complex locations.
+This may be difficult to comprehend, so let's see some examples:
 
 <details open>
 <summary>mapTo</summary>
@@ -127,6 +121,8 @@ Usage examples:
 ```kotlin
 val user = User(name = "John", surname = "Wick", password = "password hash")
 
+// In this case, we are ignoring the UserDTO password field, if you refactor the field with the IDE the exclusion will
+//  also be considered
 val userDTO = user.mapTo<UserDTO>(exclusions = listOf(UserDTO::password))
 ```
 </details>
@@ -137,6 +133,8 @@ val userDTO = user.mapTo<UserDTO>(exclusions = listOf(UserDTO::password))
 ```kotlin
 val user = User(name = "John", surname = "Wick", data = Data(password = "password hash"))
 
+// In this case, we are ignoring the data/password field, if you refactor the field the exclusion won't be considered,
+//  but it allows you to exclude more specific locations instead of simple fields.
 val userDTO = user.mapToClass<UserDTO>(exclusions = listOf("data/password"))
 ```
 </details>
@@ -157,22 +155,25 @@ println(person)
 
 ### Advanced usage
 
-You can use certain options to fine-tune the way the functions work.
+You can use certain options to fine-tune the way the functions work. Let's check them more in depth.
 
-These extra options are: `exclusions`, `mappings`, `functionMappings`, among others.
+These extra options are: `exclusions`, `mappings`, `functionMappings`, `ignoreMapFromAnnotations`, 
+`useSettersOnly`, and `mapPrimitives`.
 
-There is also more advanced functionality, such as the @MapFrom annotations, and the way functions process 
+There is also more advanced functionality, such as the @MapFrom annotations, and the way the functions process 
 primitives and different composite classes like `Iterable`, `Map`, `Pair`, and `Triple`.
+
+If you are interested in more examples than the ones provided in this README, see [MappingFunctionTest.kt](src/test/kotlin/group/phorus/mapper/mapping/MappingFunctionsTest.kt).
 
 <details open>
 <summary>More information</summary>
 
 #### Exclusions
 
-The exclusions option allows you to add a list of target field exclusions.
+The `exclusions` option allows you to add a list of target field exclusions.
 These are fields of the final class that will be completely ignored.
 
-If the excluded field is not nullable, doesn't have a default value, and it's required to build the new object,
+If the excluded field is not nullable, doesn't have a default value, and it's required to build a new object,
 the object that cannot be built because of the missing value will be set to null. If that object is the main one,
 the function will return null.
 
@@ -211,22 +212,105 @@ println(userDTO)
 
 #### Mappings
 
-TODO
+The `mappings` option allows you to forcefully map one property from the original object to a target field,
+even if they don't share a common name. This option has priority over normal mapping.
+
+You also need to set a `MappingFallback`:
+- `MappingFallback.CONTINUE` will ignore that mapping and continue normally.
+- `MappingFallback.NULL` will try to set the target field to null, if the field is not nullable it will do the same as
+  `MappingFallback.CONTINUE`.
 
 <details open>
 <summary>Examples</summary>
 
-TODO
+Classes used in the examples:
+```kotlin
+class Person(
+    name: String,
+    surname: String,
+    data: Data,
+)
+
+class PersonDTO(
+    nameDTO: String,
+    surname: String,
+)
+
+class Data(
+    otherName: String,
+)
+```
+
+```kotlin
+val person = Person(name = "John", surname = "Wick", data = Data(otherName = "Johnny"))
+
+val result = person.mapTo<PersonDTO>(
+    mappings = mapOf(Person::name to (PersonDTO::nameDTO to MappingFallback.NULL))
+)
+```
+
+```kotlin
+val person = Person(name = "John", surname = "Wick", data = Data(otherName = "Johnny"))
+
+val result = person.mapToClass<PersonDTO>(
+    mappings = mapOf("name" to ("nameDTO" to MappingFallback.NULL))
+)
+```
+
+```kotlin
+val person = Person(name = "John", surname = "Wick", data = Data(otherName = "Johnny"))
+
+val result = person.mapToClass<PersonDTO>(
+    mappings = mapOf("data/otherName" to ("nameDTO" to MappingFallback.NULL))
+)
+```
 </details>
 
 #### Function mappings
 
-TODO
+The `functionMappings` options works in a very similar way to the [`mappings`](#mappings) option, but it allows you to
+specify a mutating function that will run with the original property as input, and use the output to set the
+target field.
+
+##### Notes
+
+> The original property will be mapped to the function input type if necessary.
+
+> The function return value will be mapped to the target field type if necessary.
+
+> The function may have at most one parameter.
+
+> The function may have a nullable or optional parameter, or no parameters at all.
 
 <details open>
 <summary>Examples</summary>
 
-TODO
+```kotlin
+val person = Person(name = "John", age = 55)
+
+// The function uses the original property as input, and puts the returned value in the target field
+val updateAge : (Int) -> Int = {
+    (it + 5)
+}
+
+val personDTO = person.mapTo<PersonDTO>(
+    functionMappings = mapOf(Person::age to (updateAge to (PersonDTO::age to MappingFallback.NULL))),
+)
+
+println(personDTO)
+// out: PersonDTO(name = "John", age = 60)
+```
+
+```kotlin
+val person = Person(name = "John", age = 55)
+
+val personDTO = person.mapTo<PersonDTO>(
+    functionMappings = mapOf(Person::age to ({ (it + 5).toString() } to (PersonDTO::name to MappingFallback.NULL))),
+)
+
+println(personDTO)
+// out: PersonDTO(name = "60", age = 55)
+```
 </details>
 
 #### @MapFrom annotation
@@ -249,7 +333,7 @@ TODO
 TODO
 </details>
 
-#### Composites: Collections, Map, Pair, Triple
+#### Composites: Iterable, Map, Pair, Triple
 
 TODO
 
