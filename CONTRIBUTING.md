@@ -56,8 +56,7 @@ so do familiarize yourself with the following guidelines.
 
 This plugin is built with Gradle.
 
-* Run `./gradlew build` to build. It also runs all tests.
-  things up during development.
+* Run `./gradlew build` to build and run all the tests.
 
 ## Contacting maintainers
 
