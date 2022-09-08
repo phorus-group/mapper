@@ -44,7 +44,7 @@ typealias Value = Any
 typealias Mappings = Map<OriginalField, Pair<TargetField, MappingFallback>>
 
 /**
- * a map of fields to map forcefully, with the format:
+ * A map of fields to map forcefully, with the format:
  * [OriginalField][KProperty] - [TargetField][KProperty] - [MappingFallback]
  */
 typealias KMappings = Map<KProperty<*>, Pair<KProperty<*>, MappingFallback>>
