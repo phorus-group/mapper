@@ -1,4 +1,4 @@
-package group.phorus.mapper.mapping.overloads
+package group.phorus.mapper.mapping.extensions
 
 import group.phorus.mapper.*
 import group.phorus.mapper.mapping.MappingFallback

@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import group.phorus.mapper.mapping.MappingFunctionsTest.TestClasses.*
-import group.phorus.mapper.mapping.overloads.mapTo
-import group.phorus.mapper.mapping.overloads.mapToClass
-import group.phorus.mapper.mapping.overloads.updateFrom
+import group.phorus.mapper.mapping.extensions.mapTo
+import group.phorus.mapper.mapping.extensions.mapToClass
+import group.phorus.mapper.mapping.extensions.updateFrom
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
