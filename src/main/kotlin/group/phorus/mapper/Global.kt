@@ -38,7 +38,7 @@ typealias MappingFunction = Function<*>
 typealias Value = Any
 
 /**
- * a map of fields to map forcefully, with the format:
+ * A map of fields to map forcefully, with the format:
  * [OriginalField] - [TargetField] - [MappingFallback]
  */
 typealias Mappings = Map<OriginalField, Pair<TargetField, MappingFallback>>
