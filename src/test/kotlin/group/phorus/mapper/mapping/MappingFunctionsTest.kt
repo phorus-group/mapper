@@ -353,6 +353,26 @@ internal class MappingFunctionsTest {
             // The property is not mapped
             assertNull(result)
         }
+
+        @Test
+        fun `map from a string object field to an int object field`() {
+            class PersonTmp(
+                var id: Long,
+                var name: String,
+                var surname: String,
+                var age: String,
+            )
+            val person = PersonTmp(12, "testName", "testSurname", "50")
+
+            val result = person.mapTo<Person>()
+
+            assertNotNull(result)
+
+            assertEquals(12, result.id)
+            assertEquals("testName", result.name)
+            assertEquals("testSurname", result.surname)
+            assertEquals(50, result.age)
+        }
     }
 
     

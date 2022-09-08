@@ -215,7 +215,7 @@ println(userDTO)
 The `mappings` option allows you to forcefully map one property from the original object to a target field,
 even if they don't share a common name. This option has priority over normal mapping.
 
-You also need to set a `MappingFallback`:
+You also need to set a `MappingFallback`, used in case the mapping fails:
 - `MappingFallback.CONTINUE` will ignore that mapping and continue normally.
 - `MappingFallback.NULL` will try to set the target field to null, if the field is not nullable it will do the same as
   `MappingFallback.CONTINUE`.
@@ -244,7 +244,7 @@ class Data(
 ```kotlin
 val person = Person(name = "John", surname = "Wick", data = Data(otherName = "Johnny"))
 
-val result = person.mapTo<PersonDTO>(
+val person = person.mapTo<PersonDTO>(
     mappings = mapOf(Person::name to (PersonDTO::nameDTO to MappingFallback.NULL))
 )
 ```
@@ -252,7 +252,7 @@ val result = person.mapTo<PersonDTO>(
 ```kotlin
 val person = Person(name = "John", surname = "Wick", data = Data(otherName = "Johnny"))
 
-val result = person.mapToClass<PersonDTO>(
+val person = person.mapToClass<PersonDTO>(
     mappings = mapOf("name" to ("nameDTO" to MappingFallback.NULL))
 )
 ```
@@ -260,7 +260,7 @@ val result = person.mapToClass<PersonDTO>(
 ```kotlin
 val person = Person(name = "John", surname = "Wick", data = Data(otherName = "Johnny"))
 
-val result = person.mapToClass<PersonDTO>(
+val person = person.mapToClass<PersonDTO>(
     mappings = mapOf("data/otherName" to ("nameDTO" to MappingFallback.NULL))
 )
 ```
@@ -315,32 +315,135 @@ println(personDTO)
 
 #### @MapFrom annotation
 
-TODO
+Instead of using the `mapping` option, you can use the new `@MapFrom` annotation.
+As the name suggests, this annotation should be used on fields (of a target class)
+that you are interested in mapping from a specific location.
+
+The annotation accepts two parameters:
+- `locations`: An array of locations, the functions will attempt to map the field from the first location
+  onwards until one works.
+- `fallback`: A `MappingFallback`, used in case every location fails, works in the same way as in [Mappings](#mappings).
+  Set to `MappingFallback.CONTINUE` by default.
 
 <details open>
 <summary>Examples</summary>
 
-TODO
+Classes used in the examples:
+```kotlin
+class Person(
+    name: String,
+    surname: String,
+)
+
+class PersonDTO(
+    @MapFrom(["name"])
+    nameDTO: String,
+    surname: String,
+)
+```
+
+```kotlin
+val person = Person(name = "John", surname = "Wick")
+
+val person = person.mapTo<PersonDTO>()
+
+println(person)
+// out: PersonDTO(nameDTO = "John", surname = "Wick")
+```
+
 </details>
 
 #### Primitives
 
-TODO
+The functions support mapping some primitives between each other.
+
+Strings can be transformed to different kind of Numbers, this includes classes 
+like: `Double`, `Float`, `Long`, `Int`, `Short`, and `Byte`.
+
+##### Notes
+
+> Numbers can be transformed to String, and to other Numbers as well.
+
+> You can disable this functionality by setting the option `mapPrimitives` to false.
+
+> If the functionality is disabled or the mapping fails for some reason, the field will be set to null, if possible.
 
 <details open>
 <summary>Examples</summary>
 
-TODO
+Classes used in the examples:
+```kotlin
+class Person(
+    name: String,
+    age: Int,
+)
+
+class PersonDTO(
+    name: String,
+    age: String?,
+)
+```
+
+```kotlin
+val result = 10.mapTo<String>()
+
+println(result)
+// out: "10"
+```
+
+```kotlin
+val result = 10.mapTo<String>(mapPrimitives = false)
+
+println(result)
+// out: null
+```
+
+```kotlin
+val person = Person(name = "John", age = 55)
+
+val personDTO = person.mapTo<PersonDTO>()
+
+println(result)
+// out: Person(name = "John", age = "55")
+```
+
+```kotlin
+val person = Person(name = "John", age = 55)
+
+val personDTO = person.mapTo<PersonDTO>(mapPrimitives = false)
+
+println(result)
+// out: Person(name = "John", age = null)
+```
 </details>
 
 #### Composites: Iterable, Map, Pair, Triple
 
-TODO
+The functions support mapping different kind of composite classes.
+
+This includes Iterables like `Set` and `List`, `Map`, `Pair`, and `Triple`.
+Any of their subclasses are also supported.
+
+##### Notes
+
+> A composite classes can only be mapped to the same composite class, 
+> for example: `List<Person>` can be mapped to `List<PersonDTO>`, but cannot be mapped to `Map<PersonDTO>`.
+
+> `mappings`, `functionMappings`, and other options will be used to map each item in the composite class.
+
+> Arrays are **not supported**. This is not fixable, and its caused by the way they behave with generics.
 
 <details open>
 <summary>Examples</summary>
 
-TODO
+```kotlin
+val persons = listOf(
+    Person(name = "John", age = 55),
+    Person(name = "Martin", age = 35),
+)
+
+val result = persons.mapTo<List<PersonDTO>>()
+```
 </details>
 
 </details>
