@@ -4,8 +4,9 @@ import java.net.URL
 import java.time.LocalDate
 
 plugins {
-    kotlin("jvm") version "1.6.0-M1"
-    id("org.jetbrains.dokka") version "1.7.10"
+    kotlin("jvm").version("1.6.0-M1")
+    id("org.jetbrains.dokka").version("1.7.10")
+    id("io.github.gradle-nexus.publish-plugin").version("1.1.0")
     `maven-publish`
     `java-library`
     signing
@@ -156,6 +157,15 @@ publishing {
                 username = System.getenv("OSSRH_USER") ?: return@credentials
                 password = System.getenv("OSSRH_PASSWORD") ?: return@credentials
             }
+        }
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username.set(System.getenv("OSSRH_USER") ?: return@sonatype)
+            password.set(System.getenv("OSSRH_PASSWORD") ?: return@sonatype)
         }
     }
 }
