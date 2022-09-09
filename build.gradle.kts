@@ -1,3 +1,4 @@
+
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
 import java.time.LocalDate
@@ -142,8 +143,27 @@ publishing {
             }
         }
     }
+
+    repositories {
+        maven {
+            name = "OSSRH"
+
+            val releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
+            val snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots"
+            url = uri(if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl)
+
+            credentials {
+                username = System.getenv("OSSRH_USER") ?: return@credentials
+                password = System.getenv("OSSRH_PASSWORD") ?: return@credentials
+            }
+        }
+    }
 }
 
 signing {
+    val key = System.getenv("PUBLIC_PUBLISH_SIGNING_KEY") ?: return@signing
+    val password = System.getenv("PUBLIC_PUBLISH_SIGNING_PASSWORD") ?: return@signing
+
+    useInMemoryPgpKeys(key, password)
     sign(publishing.publications[project.name])
 }
