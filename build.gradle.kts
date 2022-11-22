@@ -30,7 +30,7 @@ dependencies {
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
+    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.1")
 }
 
 configurations.all {
