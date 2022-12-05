@@ -455,4 +455,5 @@ See [Contributing Guidelines](CONTRIBUTING.md).
 
 ## Authors and acknowledgment
 
-[Martin Ivan Rios](https://linkedin.com/in/ivr2132)
+- [Martin Ivan Rios](https://linkedin.com/in/ivr2132)
+- [Yaci Aldana Castro](https://www.linkedin.com/in/yaci-castro)
