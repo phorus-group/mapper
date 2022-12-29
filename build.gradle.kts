@@ -3,7 +3,7 @@ import java.net.URL
 import java.time.LocalDate
 
 plugins {
-    kotlin("jvm").version("1.7.22")
+    kotlin("jvm").version("1.8.0")
     id("org.jetbrains.dokka").version("1.7.20")
     id("io.github.gradle-nexus.publish-plugin").version("1.1.0")
     `maven-publish`
