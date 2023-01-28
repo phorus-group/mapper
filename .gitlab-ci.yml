@@ -1,5 +1,5 @@
 include:   
-  - project: "phorus-group/private/devops/ci-cd-templates"
+  - project: "phorus-group/private/devops/ci-cd/templates"
     file: "gradle-lib.ci.yml"
 
 variables:
