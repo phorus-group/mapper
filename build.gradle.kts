@@ -14,12 +14,14 @@ plugins {
 
 group = "group.phorus"
 description = "Kotlin based mapper with extra funcitonalities."
-version = "1.0.15"
+version = "1.0.16"
 
-java.sourceCompatibility = JavaVersion.VERSION_11
-java.targetCompatibility = JavaVersion.VERSION_11
-java.withSourcesJar()
-java.withJavadocJar()
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+    withSourcesJar()
+    withJavadocJar()
+}
 
 repositories {
     mavenCentral()
@@ -68,8 +70,8 @@ tasks {
 
     withType<KotlinCompile> {
         kotlinOptions {
-            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xopt-in=kotlin.RequiresOptIn")
-            jvmTarget = JavaVersion.VERSION_17.toString()
+            freeCompilerArgs = listOf("-Xjsr305=strict")
+            jvmTarget = java.targetCompatibility.toString()
         }
     }
 
