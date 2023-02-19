@@ -39,7 +39,7 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // Force new version because of: https://nvd.nist.gov/vuln/detail/CVE-2022-36033
-        force("org.jsoup:jsoup:1.15.3")
+        force("org.jsoup:jsoup:1.15.4")
     }
 }
 
