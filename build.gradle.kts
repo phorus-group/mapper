@@ -1,3 +1,5 @@
+
+import com.kageiit.jacobo.JacoboTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
 import java.time.LocalDate
@@ -6,6 +8,7 @@ plugins {
     kotlin("jvm").version("1.8.20")
     id("org.jetbrains.dokka").version("1.8.10")
     id("io.github.gradle-nexus.publish-plugin").version("1.3.0")
+    id("com.kageiit.jacobo") version "2.1.0"
     `maven-publish`
     `java-library`
     signing
@@ -14,7 +17,7 @@ plugins {
 
 group = "group.phorus"
 description = "Kotlin based mapper with extra funcitonalities."
-version = "1.0.23"
+version = "1.0.24"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -36,13 +39,6 @@ dependencies {
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
 }
 
-configurations.all {
-    resolutionStrategy {
-        // Force new version because of: https://nvd.nist.gov/vuln/detail/CVE-2022-36033
-        force("org.jsoup:jsoup:1.15.4")
-    }
-}
-
 
 val repoUrl = System.getenv("CI_PROJECT_URL") ?: "not defined"
 
@@ -55,6 +51,8 @@ tasks {
             xml.required.set(true)
             csv.required.set(true)
         }
+
+        finalizedBy("jacobo")
     }
 
     withType<Test> {
@@ -66,6 +64,23 @@ tasks {
         systemProperty("junit.jupiter.execution.parallel.enabled", "true")
         systemProperty("junit.jupiter.execution.parallel.mode.default", "same_thread")
         systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+
+        finalizedBy(jacocoTestReport)
+    }
+
+    register<JacoboTask>("jacobo") {
+        description = "Transforms jacoco xml report to cobertura"
+        group = "verification"
+
+        jacocoReport = file("$buildDir/reports/jacoco/test/jacocoTestReport.xml")
+        coberturaReport = file("$buildDir/reports/cobertura/cobertura.xml")
+        includeFileNames = emptySet()
+
+        val field = JacoboTask::class.java.getDeclaredField("srcDirs")
+        field.isAccessible = true
+        field.set(this, sourceSets["main"].allSource.srcDirs.map { it.path }.toTypedArray())
+
+        dependsOn(jacocoTestReport)
     }
 
     withType<KotlinCompile> {
