@@ -1,4 +1,3 @@
-
 import com.kageiit.jacobo.JacoboTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
@@ -17,7 +16,7 @@ plugins {
 
 group = "group.phorus"
 description = "Kotlin based mapper with extra funcitonalities."
-version = "1.0.24"
+version = "1.0.25"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
