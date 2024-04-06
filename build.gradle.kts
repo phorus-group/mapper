@@ -6,7 +6,7 @@ import java.time.LocalDate
 plugins {
     kotlin("jvm").version("1.9.23")
     id("org.jetbrains.dokka").version("1.9.20")
-    id("io.github.gradle-nexus.publish-plugin").version("1.3.0")
+    id("io.github.gradle-nexus.publish-plugin").version("2.0.0")
     id("com.kageiit.jacobo") version "2.1.0"
     `maven-publish`
     `java-library`
