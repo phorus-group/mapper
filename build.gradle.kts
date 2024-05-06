@@ -35,7 +35,7 @@ dependencies {
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
+    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")
 }
 
 
