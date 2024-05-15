@@ -220,7 +220,7 @@ inline fun <reified T: Any> T.updateFromObject(
     ignoreMapFromAnnotations: Boolean = false,
     useSettersOnly: Boolean = true,
     mapPrimitives: Boolean = true,
-): T? = mapTo(
+): T = mapTo(
     originalEntity = OriginalEntity(entity, entity::class.starProjectedType),
     targetType = typeOf<T>(),
     baseEntity = this to updateOption,
@@ -230,7 +230,7 @@ inline fun <reified T: Any> T.updateFromObject(
     ignoreMapFromAnnotations = ignoreMapFromAnnotations,
     useSettersOnly = useSettersOnly,
     mapPrimitives = mapPrimitives,
-) as T?
+) as T
 
 /**
  * A different (and recommended) version of the [updateFromObject] function.
@@ -307,7 +307,7 @@ inline fun <reified T: Any> T.updateFrom(
     ignoreMapFromAnnotations: Boolean = false,
     useSettersOnly: Boolean = true,
     mapPrimitives: Boolean = true,
-): T? = mapTo(
+): T = mapTo(
     originalEntity = OriginalEntity(entity, entity::class.starProjectedType),
     targetType = typeOf<T>(),
     baseEntity = this to updateOption,
@@ -318,4 +318,4 @@ inline fun <reified T: Any> T.updateFrom(
     ignoreMapFromAnnotations = ignoreMapFromAnnotations,
     useSettersOnly = useSettersOnly,
     mapPrimitives = mapPrimitives,
-) as T?
+) as T
