@@ -4,7 +4,7 @@ import java.net.URL
 import java.time.LocalDate
 
 plugins {
-    kotlin("jvm").version("1.9.23")
+    kotlin("jvm").version("1.9.24")
     id("org.jetbrains.dokka").version("1.9.20")
     id("io.github.gradle-nexus.publish-plugin").version("2.0.0")
     id("com.kageiit.jacobo") version "2.1.0"
