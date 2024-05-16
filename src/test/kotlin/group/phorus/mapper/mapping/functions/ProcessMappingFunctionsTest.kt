@@ -4,6 +4,7 @@ import group.phorus.mapper.OriginalEntity
 import group.phorus.mapper.targetClass
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import kotlin.reflect.typeOf
 import kotlin.test.assertEquals
 
@@ -367,6 +368,44 @@ internal class ProcessMappingFunctionsTest {
         // The result contains the return value of the function after using the original prop value as the input
         assertEquals("TESTNAME", result["nameStr"])
         assertEquals(7, result["ageTmp"])
+    }
+
+    @Test
+    fun `process function mappings with an exception inside the function`() {
+        val person = MappingTestClasses.Person(name = "testName", age = 7)
+
+        val function: (String) -> String = { throw Exception("fail") }
+
+        assertThrows<Exception> {
+            processMappings(
+                originalEntity = OriginalEntity(person, typeOf<MappingTestClasses.Person>()),
+                targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+                mappings = mapOf(
+                    "name" to (function to ("nameStr" to ProcessMappingFallback.NULL_OR_THROW)),
+                    "age" to (null to ("ageTmp" to ProcessMappingFallback.NULL)),
+                ),
+                exclusions = emptyList(),
+            )
+        }
+    }
+
+    @Test
+    fun `process function mappings catching an exception inside the function`() {
+        val person = MappingTestClasses.Person(name = "testName", age = 7)
+
+        val function: (String) -> String = { throw Exception("fail") }
+
+        assertDoesNotThrow {
+            processMappings(
+                originalEntity = OriginalEntity(person, typeOf<MappingTestClasses.Person>()),
+                targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+                mappings = mapOf(
+                    "name" to (function to ("nameStr" to ProcessMappingFallback.NULL)),
+                    "age" to (null to ("ageTmp" to ProcessMappingFallback.NULL)),
+                ),
+                exclusions = emptyList(),
+            )
+        }
     }
 
     // If you want to use a function with default values, the function needs to be outside any other function

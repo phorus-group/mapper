@@ -2,6 +2,8 @@ package group.phorus.mapper.mapping.functions
 
 import group.phorus.mapper.*
 import group.phorus.mapper.mapping.MappingFallback
+import group.phorus.mapper.mapping.MappingFallback.CONTINUE
+import group.phorus.mapper.mapping.MappingFallback.NULL
 import group.phorus.mapper.mapping.mapTo
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.isSupertypeOf
@@ -32,7 +34,7 @@ internal fun parseLocation(location: String): List<String> =
  * Process mapping fallback.
  */
 internal enum class ProcessMappingFallback {
-    NULL, SKIP
+    NULL, SKIP, CONTINUE_OR_THROW, NULL_OR_THROW,
 }
 
 /**
@@ -45,6 +47,8 @@ internal fun MappingFallback.toProcessMappingFallback() =
     when(this) {
         MappingFallback.NULL -> ProcessMappingFallback.NULL
         MappingFallback.CONTINUE -> ProcessMappingFallback.SKIP
+        MappingFallback.CONTINUE_OR_THROW -> ProcessMappingFallback.CONTINUE_OR_THROW
+        MappingFallback.NULL_OR_THROW -> ProcessMappingFallback.NULL_OR_THROW
     }
 
 /**
@@ -173,7 +177,7 @@ private fun processFunction(
     // Value returned in case something fails in the mapping
     // If the fallback is null, then return a wrapper with a null value, if not
     //  return null to continue with the normal mapping
-    val exitValue = if (fallback == ProcessMappingFallback.NULL && targetField.type.isMarkedNullable) {
+    val exitValue = if ((fallback == ProcessMappingFallback.NULL || fallback == ProcessMappingFallback.NULL_OR_THROW) && targetField.type.isMarkedNullable) {
         Wrapper<Any?>(null)
     } else null
 
@@ -236,8 +240,10 @@ private fun processFunction(
             }
         )
     }.getOrElse {
-        // If the function throws an exception we cannot go further, return the exit value
-        return@mapProp exitValue
+        // If the function throws an exception we cannot go further, return the exit value or throw based on the selected ProcessMappingFallback
+        if (fallback == ProcessMappingFallback.CONTINUE_OR_THROW || fallback == ProcessMappingFallback.NULL_OR_THROW) {
+            throw it
+        } else return@mapProp exitValue
     }
 
     // If the returned value is null, return it directly since we don't need to check the type

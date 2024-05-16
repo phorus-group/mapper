@@ -220,6 +220,10 @@ You also need to set a `MappingFallback`, used in case the mapping fails:
 - `MappingFallback.CONTINUE` will ignore that mapping and continue normally.
 - `MappingFallback.NULL` will try to set the target field to null, if the field is not nullable it will do the same as
   `MappingFallback.CONTINUE`.
+- `MappingFallback.CONTINUE_OR_THROW` is only used for [function mappings](#function-mappings). It will rethrow any exceptions thrown inside
+  the function, if no exception is thrown it will do the same as `MappingFallback.CONTINUE`.
+- `MappingFallback.NULL_OR_THROW` is only used for [function mappings](#function-mappings). It will rethrow any exceptions thrown inside
+  the function, if no exception is thrown it will do the same as `MappingFallback.NULL`.
 
 <details open>
 <summary>Examples</summary>

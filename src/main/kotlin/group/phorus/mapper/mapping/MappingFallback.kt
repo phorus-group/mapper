@@ -14,4 +14,16 @@ enum class MappingFallback {
      * This option will ignore the mapping, and let the mapper continue its process.
      */
     CONTINUE,
+
+    /**
+     * This option is only used for function mappings. It rethrows any exception thrown inside the function.
+     * If no exceptions are thrown, it'll act as [CONTINUE].
+     */
+    CONTINUE_OR_THROW,
+
+    /**
+     * This option is only used for function mappings. It rethrows any exception thrown inside the function.
+     * If no exceptions are thrown, it'll act as [NULL].
+     */
+    NULL_OR_THROW,
 }
