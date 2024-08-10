@@ -11,5 +11,5 @@ variables:
   GRADLE_PUBLISH_ENV_URL: "https://search.maven.org/artifact/group.phorus/mapper"
 
 .gradle_publish:
-  before_Sccript:
+  before_script:
     - ./gradlew --debug --build-cache publishToSonatype closeAndReleaseSonatypeStagingRepository
