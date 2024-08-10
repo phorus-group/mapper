@@ -9,3 +9,7 @@ variables:
   GRADLE_PUBLISH_CLOSE_AND_RELEASE: "true"
   GRADLE_PUBLISH_ENV_NAME: "maven-central"
   GRADLE_PUBLISH_ENV_URL: "https://search.maven.org/artifact/group.phorus/mapper"
+
+.gradle_publish:
+  before_Sccript:
+    - ./gradlew --debug --build-cache publishToSonatype closeAndReleaseSonatypeStagingRepository
