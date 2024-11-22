@@ -32,6 +32,7 @@ repositories {
 dependencies {
     // Kotlin
     implementation(kotlin("reflect"))
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.3")
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
