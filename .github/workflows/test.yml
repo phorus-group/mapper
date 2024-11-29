@@ -22,5 +22,5 @@ jobs:
           echo "allprojects { dependencyLocking { lockAllConfigurations() } }" >> ~/.gradle/init.gradle
           ./gradlew dependencies --write-locks
 
-      - name: "Clone action"
+      - name: "Run vulnerability analysis"
         uses: phorus-group/vulnerability-analysis-action@main
