@@ -1,4 +1,4 @@
-name: Test
+name: Vulnerability analysis
 
 on:
   pull_request:
