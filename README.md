@@ -1,4 +1,5 @@
-# Phorus Mapper
+# <img src="https://github.com/user-attachments/assets/5cd5924a-90e1-4bf7-8917-99851e84b304" width="50"> &nbsp; Phorus Mapper
+<i><b>~ Can't find a good mapper? Why not Zoidberg?</b></i>
 
 <a href='https://gitlab.com/phorus-group/public/development/libraries/mapper/-/pipelines?ref=main'><img src='https://gitlab.com/phorus-group/public/development/libraries/mapper/badges/main/pipeline.svg'></a>
 <a href='https://gitlab.com/phorus-group/public/development/libraries/mapper/-/pipelines?ref=main'><img src='https://gitlab.com/phorus-group/public/development/libraries/mapper/badges/main/coverage.svg'></a>
