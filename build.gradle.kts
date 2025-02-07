@@ -16,7 +16,7 @@ plugins {
 
 group = "group.phorus"
 description = "Kotlin based mapper with extra functionalities."
-version = "1.1.3"
+version = "1.1.4"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
