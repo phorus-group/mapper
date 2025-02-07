@@ -37,6 +37,9 @@ internal enum class ProcessMappingFallback {
     NULL, SKIP, CONTINUE_OR_THROW, NULL_OR_THROW,
 }
 
+internal fun ProcessMappingFallback.isNull() =
+    this == ProcessMappingFallback.NULL || this == ProcessMappingFallback.NULL_OR_THROW
+
 /**
  * Transforms a [MappingFallback] to [ProcessMappingFallback].
  *
@@ -82,19 +85,19 @@ internal fun processMappings(
                 fallback = mapping.value.second.second,
             ) ?: if (originalProp == null) {
                 // If the original prop is null, skip the value or not based on the mapping fallback
-                if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
+                if (targetField.type.isMarkedNullable && mapping.value.second.second.isNull()) {
                     Wrapper(null)
                 } else null
             } else if (originalProp.value == null) {
                 // If the original prop value is null and the target property is not nullable, return null to skip
                 //  the mapping
-                if (targetField.type.isMarkedNullable) {
+                if (targetField.type.isMarkedNullable && mapping.value.second.second.isNull()) {
                     Wrapper(null)
                 } else null
             } else {
                 // If the mapping has a function and reaches this point, something failed
                 if (mapping.value.first != null) {
-                    if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
+                    if (targetField.type.isMarkedNullable && mapping.value.second.second.isNull()) {
                         Wrapper(null)
                     } else null
                 } else {
@@ -107,7 +110,7 @@ internal fun processMappings(
                     // If the mapped value is null, return it or return null based on the fallback and the nullability
                     //  of the target field
                     if (finalProp == null) {
-                        if (targetField.type.isMarkedNullable && mapping.value.second.second == ProcessMappingFallback.NULL) {
+                        if (targetField.type.isMarkedNullable && mapping.value.second.second.isNull()) {
                            Wrapper(null)
                         } else null
                     } else Wrapper(finalProp)

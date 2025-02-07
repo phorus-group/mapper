@@ -165,7 +165,7 @@ internal class ProcessMappingFunctionsTest {
             exclusions = emptyList(),
         )
 
-        assertEquals(2, result.size)
+        assertEquals(1, result.size)
 
         assertNull(result["nameStr"])
         assertEquals(7, result["ageTmp"])

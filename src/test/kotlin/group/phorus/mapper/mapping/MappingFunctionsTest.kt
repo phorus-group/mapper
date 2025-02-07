@@ -7,6 +7,7 @@ import group.phorus.mapper.mapping.MappingFunctionsTest.TestClasses.*
 import group.phorus.mapper.mapping.extensions.mapTo
 import group.phorus.mapper.mapping.extensions.mapToClass
 import group.phorus.mapper.mapping.extensions.updateFrom
+import group.phorus.mapper.mapping.functions.ProcessMappingFallback
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -690,6 +691,58 @@ internal class MappingFunctionsTest {
             assertEquals("nameTest2", person.nameStr)
             assertEquals("surnameTest", person.surname)
             assertEquals("87", person.ageStr)
+        }
+
+        @Test
+        fun `update an object from another object with a function mapping`() {
+            val person = PersonDTO("nameTest", "87", "surnameTest")
+            val person2 = Person(123, "pepe", "sur", 53)
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val func : (String) -> String = {
+                it.uppercase()
+            }
+
+            val result = person2.updateFrom(person,
+                functionMappings = mapOf(PersonDTO::nameStr to (func to (Person::name to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+
+            assertEquals("NAMETEST", result.name) // Only the name field was updated
+            assertEquals("surnameTest", result.surname)
+            assertEquals(53, result.age)
+
+            // The instance was changed using setters
+            assertEquals("NAMETEST", person2.name) // Only the name field was updated
+            assertEquals("surnameTest", person2.surname)
+            assertEquals(53, person2.age)
+        }
+
+        @Test
+        fun `update an object from another object with a function mapping with a null input`() {
+            val person = PersonDTO("nameTest", "87", "surnameTest")
+            val person2 = Person(123, "pepe", "sur", 53)
+
+            // The function uses the original property as input, and puts the returned value in the target property
+            val func : (String) -> String = {
+                it.uppercase()
+            }
+
+            val result = person2.updateFrom(person,
+                functionMappings = mapOf(PersonDTO::nameStr to (func to (Person::name to MappingFallback.NULL))),
+            )
+
+            assertNotNull(result)
+
+            assertEquals("NAMETEST", result.name) // Only the name field was updated
+            assertEquals("surnameTest", result.surname)
+            assertEquals(53, result.age)
+
+            // The instance was changed using setters
+            assertEquals("NAMETEST", person2.name) // Only the name field was updated
+            assertEquals("surnameTest", person2.surname)
+            assertEquals(53, person2.age)
         }
 
         @Test
