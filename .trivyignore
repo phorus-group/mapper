@@ -1,0 +1,3 @@
+# To be removed after the dependency jackson-module-kotlin:2.13.4 is fixed
+# It doesn't affect the library since it's only used for testing
+CVE-2022-40152
