@@ -1,10 +1,8 @@
 # <img src="https://github.com/user-attachments/assets/5cd5924a-90e1-4bf7-8917-99851e84b304" width="50"> &nbsp; Phorus Mapper
 <i><b>~ Can't find a good mapper? Why not Zoidberg?</b></i>
 
-<a href='https://gitlab.com/phorus-group/public/development/libraries/mapper/-/pipelines?ref=main'><img src='https://gitlab.com/phorus-group/public/development/libraries/mapper/badges/main/pipeline.svg'></a>
-<a href='https://gitlab.com/phorus-group/public/development/libraries/mapper/-/pipelines?ref=main'><img src='https://gitlab.com/phorus-group/public/development/libraries/mapper/badges/main/coverage.svg'></a>
-[![GitLab license](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/group.phorus/mapper/badge.svg)](https://maven-badges.herokuapp.com/maven-central/group.phorus/mapper)
+[![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Maven Central](https://img.shields.io/maven-central/v/group.phorus/mapper)](https://mvnrepository.com/artifact/group.phorus/mapper)
 
 Mapper that allows you to transform an object to another, or update an object based on the properties of another.
 

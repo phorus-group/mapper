@@ -6,6 +6,9 @@ import group.phorus.mapper.mapping.MappingFallback.CONTINUE
 import group.phorus.mapper.mapping.MappingFallback.NULL
 import group.phorus.mapper.mapping.mapTo
 import kotlin.reflect.KFunction
+import kotlin.reflect.KType
+import kotlin.reflect.KTypeProjection
+import kotlin.reflect.full.createType
 import kotlin.reflect.full.isSupertypeOf
 import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
@@ -144,6 +147,81 @@ private fun isExcluded(field: Field, exclusions: List<TargetField>): Boolean {
 }
 
 /**
+ * Converts a [java.lang.reflect.Type] to a [KType].
+ * Handles [Class], [java.lang.reflect.ParameterizedType], and [java.lang.reflect.WildcardType].
+ */
+private fun javaTypeToKType(javaType: java.lang.reflect.Type): KType? {
+    return when (javaType) {
+        is Class<*> -> javaType.kotlin.createType(nullable = false)
+        is java.lang.reflect.ParameterizedType -> {
+            val rawClass = javaType.rawType as? Class<*> ?: return null
+            val typeArgs = javaType.actualTypeArguments.map { arg ->
+                val kType = javaTypeToKType(arg) ?: return null
+                KTypeProjection.invariant(kType)
+            }
+            rawClass.kotlin.createType(arguments = typeArgs, nullable = false)
+        }
+        is java.lang.reflect.WildcardType -> {
+            val upper = javaType.upperBounds.firstOrNull() ?: return null
+            javaTypeToKType(upper)
+        }
+        else -> null
+    }
+}
+
+/**
+ * Extracts the parameter [KType] of a [Function1] lambda using Java reflection.
+ * Used as fallback when Kotlin's reflect() returns null (Kotlin 2.3+).
+ *
+ * Tries two strategies:
+ * 1. Find a non-bridge invoke method with a specific (non-Object) parameter type.
+ * 2. Extract type arguments from the generic Function1 interface.
+ *
+ * @param function the Function1 lambda.
+ * @return the parameter [KType], or null if it cannot be determined.
+ */
+private fun getFunction1ParamType(function: Function1<*, *>): KType? {
+    // Try to find a non-bridge invoke method with a specific parameter type
+    val specificInvoke = function.javaClass.methods
+        .filter { it.name == "invoke" && it.parameterCount == 1 && !it.isBridge && !it.isSynthetic }
+        .firstOrNull { it.parameterTypes[0] != Any::class.java }
+    if (specificInvoke != null) {
+        val javaType = specificInvoke.parameterTypes[0]
+        val isNullable = specificInvoke.parameters[0].annotations.any {
+            it.annotationClass.simpleName?.contains("Nullable") == true
+        }
+        return javaType.kotlin.createType(nullable = isNullable)
+    }
+
+    // As a second option, extract type from generic interface (Function1<P, R>)
+    for (iface in function.javaClass.genericInterfaces) {
+        if (iface is java.lang.reflect.ParameterizedType && iface.rawType == Function1::class.java) {
+            return javaTypeToKType(iface.actualTypeArguments[0])
+        }
+    }
+
+    return null
+}
+
+/**
+ * Extracts the expected target class from a [ClassCastException] message.
+ * Used as a last-resort fallback when lambda reflection is unavailable (Kotlin 2.3+ invokedynamic lambdas).
+ * When the function is called with an incompatible type, the CCE message reveals the expected type,
+ * allowing us to map the input and retry.
+ *
+ * @param e the ClassCastException thrown by the function invocation.
+ * @return the expected [KType] based on the star-projected class, or null if it cannot be determined.
+ */
+private fun extractExpectedClassFromCCE(e: ClassCastException): Class<*>? {
+    val message = e.message ?: return null
+    // HotSpot format: "class X cannot be cast to class Y (module info...)"
+    // Fallback format: "X cannot be cast to Y"
+    val pattern = Regex("cannot be cast to (?:class )?([\\w.\$]+)")
+    val className = pattern.find(message)?.groupValues?.get(1) ?: return null
+    return runCatching { Class.forName(className) }.getOrNull()
+}
+
+/**
  * Process a function mapping if possible.
  *
  * @param originalProp original property.
@@ -165,7 +243,7 @@ private fun isExcluded(field: Field, exclusions: List<TargetField>): Boolean {
  *  - The function doesn't return anything
  *  - The function needs more than 1 parameter
  *  - The function throws an exception
- *  
+ *
  *  If the mapping fallback is null in any of these cases, we'll try to return a wrapper with null,
  *    but if the target field is non-nullable we'll return null directly.
  */
@@ -184,17 +262,27 @@ private fun processFunction(
         Wrapper<Any?>(null)
     } else null
 
-    // If the function has more than 1 param, return the exit value
-    val functionParam = (function.reflect()?.parameters
-        ?: runCatching { (function as KFunction<*>).parameters }.getOrNull())
-        .let {
-            if (it == null || it.size > 1)
-                return@mapProp exitValue
-            if (it.isEmpty()) null else it.single()
-        }
+    // Try to get function parameter info through Kotlin reflection
+    val reflectedParams = function.reflect()?.parameters
+        ?: runCatching { (function as KFunction<*>).parameters }.getOrNull()
 
-    // Get the function input type
-    val inputType = functionParam?.type
+    // Track whether this is a single-param function, even when Kotlin reflection fails (Kotlin 2.3+)
+    val isFunction1 = function is Function1<*, *>
+
+    val functionParam = if (reflectedParams != null) {
+        // If the function has more than 1 param, return the exit value
+        if (reflectedParams.size > 1) return@mapProp exitValue
+        if (reflectedParams.isEmpty()) null else reflectedParams.single()
+    } else {
+        // reflect() returned null and KFunction cast failed (common for lambdas in Kotlin 2.3+)
+        if (!isFunction1 && function !is Function0<*>) return@mapProp exitValue
+        null
+    }
+
+    // Get the function input type, use Kotlin reflection if available, otherwise Java reflection fallback
+    val inputType: KType? = functionParam?.type ?: if (isFunction1 && functionParam == null) {
+        getFunction1ParamType(function)
+    } else null
 
     // If the original prop is null and function param is not optional or nullable, return the exit value
     if (originalProp?.value == null && functionParam?.isOptional == false && !functionParam.type.isMarkedNullable)
@@ -218,10 +306,12 @@ private fun processFunction(
         Wrapper(
             // If the function param is null
             if (inputProp == null) {
-                // If the function param is null
-                if (functionParam == null) {
-                    // Then there are no params, call the function without anything
+                if (functionParam == null && !isFunction1) {
+                    // No params function
                     (function as Function0<*>).invoke()
+                } else if (functionParam == null) {
+                    // Lambda with 1 param but no KParameter info, try passing null
+                    (function as Function1<Any?, *>).invoke(null)
                 } else if (functionParam.isOptional) {
                     // If the inputProp is null, but the function param is optional, then call the function
                     (function as KFunction<*>).callBy(emptyMap())
@@ -232,20 +322,48 @@ private fun processFunction(
                     // If the input prop is null, and the input type is present, and it's not nullable
                     //   or optional we cannot go further, return the exit value
                 } else return@mapProp exitValue
-            } else if (functionParam != null) {
-                // If the input prop and the function param are not null, call the function with
-                //  the input prop
+            } else if (functionParam != null || isFunction1) {
+                // Has 1 param and input is not null, call the function with the input prop
                 (function as Function1<Any?, *>).invoke(inputProp)
             } else {
-                // If the input param is not null but the function param is null, then ignore the input
-                //  param and call the function
+                // No params function, ignore the input
                 (function as Function0<*>).invoke()
             }
         )
-    }.getOrElse {
-        // If the function throws an exception we cannot go further, return the exit value or throw based on the selected ProcessMappingFallback
+    }.getOrElse { firstError ->
+        // If the fallback requires throwing, always throw
         if (fallback == ProcessMappingFallback.CONTINUE_OR_THROW || fallback == ProcessMappingFallback.NULL_OR_THROW) {
-            throw it
+            throw firstError
+        }
+
+        // If the call failed with a ClassCastException and we couldn't determine the input type
+        // (common with Kotlin 2.3+ invokedynamic lambdas where reflect() returns null),
+        // extract the expected type from the exception, map the input, and retry.
+        if (firstError is ClassCastException && inputType == null && originalProp != null) {
+            val extractedClass = extractExpectedClassFromCCE(firstError)
+            if (extractedClass != null) {
+                // For collection types, preserve the original element type to avoid star-projection
+                val expectedType = if (
+                    Iterable::class.java.isAssignableFrom(extractedClass) &&
+                    originalProp.value is Iterable<*>
+                ) {
+                    val originalElementType = originalProp.type.arguments.firstOrNull()?.type
+                    if (originalElementType != null) {
+                        extractedClass.kotlin.createType(
+                            arguments = listOf(KTypeProjection.invariant(originalElementType))
+                        )
+                    } else extractedClass.kotlin.starProjectedType
+                } else {
+                    extractedClass.kotlin.starProjectedType
+                }
+
+                val mappedInput = mapTo(originalEntity = originalProp, targetType = expectedType)
+                if (mappedInput != null) {
+                    runCatching {
+                        Wrapper((function as Function1<Any?, *>).invoke(mappedInput))
+                    }.getOrElse { return@mapProp exitValue }
+                } else return@mapProp exitValue
+            } else return@mapProp exitValue
         } else return@mapProp exitValue
     }
 
@@ -267,7 +385,7 @@ private fun processFunction(
     // If the mapped value is null, return it or return null based on the nullability of the target field
     if (returnProp == null) {
         if (targetField.type.isMarkedNullable) {
-            return@mapProp Wrapper<Any?>(null)
+            return@mapProp Wrapper(null)
         } else return@mapProp null
     } else Wrapper(returnProp)
 }

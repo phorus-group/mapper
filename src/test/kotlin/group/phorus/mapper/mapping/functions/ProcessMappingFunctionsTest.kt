@@ -761,4 +761,313 @@ internal class ProcessMappingFunctionsTest {
         assertNull(result["nameStr"])
         assertEquals(7, result["ageTmp"])
     }
+
+    private class FunctionMappingTestClasses {
+        class Source(
+            val name: String,
+            val breed: Breed,
+            val tags: List<String>,
+        )
+
+        class SourceNullable(
+            val name: String?,
+            val breed: Breed?,
+        )
+
+        class Breed(
+            val breedName: String,
+        )
+
+        class BreedDTO(
+            val breedName: String,
+        )
+
+        class Target(
+            val name: String,
+            val breedDTO: BreedDTO,
+        )
+
+        class TargetNullable(
+            val name: String?,
+            val breedDTO: BreedDTO?,
+        )
+
+        class TagHolder(
+            val tags: List<String>,
+        )
+    }
+
+    @Test
+    fun `process function mappings with a lambda that transforms a string`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a", "b"),
+        )
+
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+            mappings = mapOf(
+                "name" to ({ str: String -> str.uppercase() } to ("nameStr" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        // The result contains the return value of the function after using the original prop value as the input
+        assertEquals("TESTNAME", result["nameStr"])
+    }
+
+    @Test
+    fun `process function mappings with a lambda that requires type mapping of input`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a", "b"),
+        )
+
+        // The lambda expects BreedDTO but the original field is Breed, it should be mapped automatically
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.Target>(),
+            mappings = mapOf(
+                "breed" to ({ dto: FunctionMappingTestClasses.BreedDTO -> dto } to ("breedDTO" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertEquals(1, result.size)
+        assertTrue(result["breedDTO"] is FunctionMappingTestClasses.BreedDTO)
+        assertEquals("testBreed", (result["breedDTO"] as FunctionMappingTestClasses.BreedDTO).breedName)
+    }
+
+    @Test
+    fun `process function mappings with a no-param lambda and null original field`() {
+        val source = FunctionMappingTestClasses.SourceNullable(name = null, breed = null)
+
+        // The function has no params and the original field is null, it should be invoked without params
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.SourceNullable>()),
+            targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+            mappings = mapOf(
+                null to ({ "constant value" } to ("nameStr" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertEquals("constant value", result["nameStr"])
+    }
+
+    @Test
+    fun `process function mappings with a nullable-param lambda and null original value`() {
+        val source = FunctionMappingTestClasses.SourceNullable(name = null, breed = null)
+
+        // The function param is nullable, so it should receive null when the original value is null
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.SourceNullable>()),
+            targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+            mappings = mapOf(
+                "name" to ({ str: String? -> str?.uppercase() ?: "was null" } to ("nameStr" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertEquals("was null", result["nameStr"])
+    }
+
+    @Test
+    fun `process function mappings where the function throws an exception, and the fallback is continue or throw`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        // The function throws an exception, and the fallback is continue or throw, so the exception should be rethrown
+        assertThrows<RuntimeException> {
+            processMappings(
+                originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+                targetClass = targetClass<FunctionMappingTestClasses.Target>(),
+                mappings = mapOf(
+                    "breed" to ({ _: FunctionMappingTestClasses.BreedDTO -> throw RuntimeException("test error") } to ("breedDTO" to ProcessMappingFallback.CONTINUE_OR_THROW)),
+                ),
+                exclusions = emptyList(),
+            )
+        }
+    }
+
+    @Test
+    fun `process function mappings where the function throws an exception with the wrong input type, and the fallback is skip`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        // The function throws an exception, and the fallback is skip, so the mapping should be skipped
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.TargetNullable>(),
+            mappings = mapOf(
+                "breed" to ({ _: FunctionMappingTestClasses.BreedDTO -> throw RuntimeException("fail") } to ("breedDTO" to ProcessMappingFallback.SKIP)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertFalse(result.containsKey("breedDTO"))
+    }
+
+    @Test
+    fun `process function mappings where the function throws an exception with the wrong input type, and the fallback is null`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        val function: (FunctionMappingTestClasses.BreedDTO) -> FunctionMappingTestClasses.BreedDTO = { throw RuntimeException("fail") }
+
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.TargetNullable>(),
+            mappings = mapOf(
+                "breed" to (function to ("breedDTO" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        // Since the mapping fallback is null and the target is nullable, the result contains null
+        assertTrue(result.containsKey("breedDTO"))
+        assertNull(result["breedDTO"])
+    }
+
+    @Test
+    fun `process function mappings with a lambda that transforms a list of strings`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a", "b", "c"),
+        )
+
+        // The function transforms a list of strings, the collection type should be preserved
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.TagHolder>(),
+            mappings = mapOf(
+                "tags" to ({ tags: List<String> -> tags.map { it.uppercase() } } to ("tags" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertEquals(1, result.size)
+        @Suppress("UNCHECKED_CAST")
+        val tags = result["tags"] as List<String>
+        assertEquals(listOf("A", "B", "C"), tags)
+    }
+
+    @Test
+    fun `process function mappings with a lambda returning a different type than the target`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        // The function returns Breed but the target expects BreedDTO, the return value should be mapped
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.Target>(),
+            mappings = mapOf(
+                "breed" to ({ breed: FunctionMappingTestClasses.Breed -> breed } to ("breedDTO" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertEquals(1, result.size)
+        assertTrue(result["breedDTO"] is FunctionMappingTestClasses.BreedDTO)
+        assertEquals("testBreed", (result["breedDTO"] as FunctionMappingTestClasses.BreedDTO).breedName)
+    }
+
+    @Test
+    fun `process function mappings with a non-nullable param lambda and null original value`() {
+        val source = FunctionMappingTestClasses.SourceNullable(name = null, breed = null)
+
+        // The function param is non-nullable but the original field value is null
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.SourceNullable>()),
+            targetClass = targetClass<MappingTestClasses.PersonDTONullable>(),
+            mappings = mapOf(
+                "name" to ({ str: String -> str.uppercase() } to ("nameStr" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        // Since the mapping fallback is null, the result contains null
+        assertTrue(result.containsKey("nameStr"))
+        assertNull(result["nameStr"])
+    }
+
+    @Test
+    fun `process function mappings where the function throws an exception, and the fallback is null or throw`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        val function: (String) -> String = { throw IllegalStateException("test") }
+
+        assertThrows<IllegalStateException> {
+            processMappings(
+                originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+                targetClass = targetClass<MappingTestClasses.PersonDTO>(),
+                mappings = mapOf(
+                    "name" to (function to ("nameStr" to ProcessMappingFallback.NULL_OR_THROW)),
+                ),
+                exclusions = emptyList(),
+            )
+        }
+    }
+
+    @Test
+    fun `process function mappings with a lambda returning null and a nullable target field`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.TargetNullable>(),
+            mappings = mapOf(
+                "name" to ({ _: String -> null } to ("name" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        assertTrue(result.containsKey("name"))
+        assertNull(result["name"])
+    }
+
+    @Test
+    fun `process function mappings with a lambda returning null and a non-nullable target field`() {
+        val source = FunctionMappingTestClasses.Source(
+            name = "testName",
+            breed = FunctionMappingTestClasses.Breed(breedName = "testBreed"),
+            tags = listOf("a"),
+        )
+
+        val result = processMappings(
+            originalEntity = OriginalEntity(source, typeOf<FunctionMappingTestClasses.Source>()),
+            targetClass = targetClass<FunctionMappingTestClasses.Target>(),
+            mappings = mapOf(
+                "name" to ({ _: String -> null } to ("name" to ProcessMappingFallback.NULL)),
+            ),
+            exclusions = emptyList(),
+        )
+
+        // Non-nullable target + null return → mapping is skipped
+        assertFalse(result.containsKey("name"))
+    }
 }
