@@ -1,8 +1,0 @@
-[Default]
-* @irios.phorus
-
-[Gitlab CI]
-.gitlab-ci.yml @irios.phorus
-
-[CODEOWNERS]
-CODEOWNERS @irios.phorus
