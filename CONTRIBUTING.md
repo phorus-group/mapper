@@ -61,4 +61,3 @@ This plugin is built with Gradle.
 ## Contacting maintainers
 
 * If something cannot be done, is not convenient, or does not work: submit an [issue](#submitting-issues).
-* "How to do something" questions: [StackOverflow](https://stackoverflow.com).
