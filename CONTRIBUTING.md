@@ -40,7 +40,7 @@ so do familiarize yourself with the following guidelines.
       corresponding test is too hard or otherwise impractical.
     * Place a test for the functionality in [unit tests directory](src/test/kotlin)
     * Follow the style of writing tests that is used in this project:
-      name test functions as `...`, don't use backticks in test names. Name test classes as `...Test`.
+      name test functions descriptively, don't use backticks in test names. Name test classes as `ClassNameTest`.
     * Fixes that, in addition to directly solving the bug, add a large piece of new functionality or change the existing one, will be considered as features.
 * If you introduce any new features or change the existing behavior:
     * Comment on the existing issue if you want to work on it or create one beforehand.
@@ -54,7 +54,7 @@ so do familiarize yourself with the following guidelines.
 
 ## Building
 
-This plugin is built with Gradle.
+This library is built with Gradle.
 
 * Run `./gradlew build` to build and run all the tests.
 
