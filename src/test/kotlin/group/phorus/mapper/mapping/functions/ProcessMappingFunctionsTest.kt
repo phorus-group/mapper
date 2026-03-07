@@ -1067,7 +1067,7 @@ internal class ProcessMappingFunctionsTest {
             exclusions = emptyList(),
         )
 
-        // Non-nullable target + null return → mapping is skipped
+        // Non-nullable target + null return -> mapping is skipped
         assertFalse(result.containsKey("name"))
     }
 }
