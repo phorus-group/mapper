@@ -32,6 +32,7 @@ All the functionality can be accessed via the following extension functions: `An
 - [Features](#features)
 - [Getting started](#getting-started)
     - [Installation](#installation)
+    - [Quick start](#quick-start)
     - [Usage](#usage)
     - [Advanced usage](#advanced-usage)
       - [Exclusions](#exclusions)
@@ -98,6 +99,77 @@ implementation("group.phorus:mapper:x.y.z")
 </dependency>
 ```
 </details>
+
+### Quick start
+
+The most common usages are transforming one object into another and updating an object
+from another.
+
+**1. Define two classes with matching field names:**
+
+```kotlin
+class Person(
+    var name: String? = null,
+    var surname: String? = null,
+    var age: Int? = null,
+)
+
+class PersonDTO(
+    var name: String? = null,
+    var surname: String? = null,
+    var age: Int? = null,
+)
+```
+
+**2. Transform an object to another type:**
+
+```kotlin
+val person = Person(name = "John", surname = "Wick", age = 55)
+
+val dto = person.mapTo<PersonDTO>()
+
+println(dto)
+// out: PersonDTO(name = "John", surname = "Wick", age = 55)
+```
+
+Fields are matched by name automatically. You don't need any configuration or annotations.
+
+**3. Update an object from another (as a partial update):**
+
+```kotlin
+val person = Person(name = "John", surname = "Wick", age = 55)
+val update = PersonDTO(surname = "Lennon")
+
+person.updateFrom(update, updateOption = UpdateOption.IGNORE_NULLS)
+
+println(person)
+// out: Person(name = "John", surname = "Lennon", age = 55)
+```
+
+With `IGNORE_NULLS`, only the non-null fields from `update` are applied. `name` and `age` remain
+unchanged because they were `null` in the update object. This effectively merges the update object
+with the original object.
+
+**4. Exclude fields, rename fields, or transform values:**
+
+```kotlin
+// Exclude a field from the result
+val dto = person.mapTo<PersonDTO>(exclusions = listOf(PersonDTO::age))
+// out: PersonDTO(name = "John", surname = "Wick", age = null)
+
+// Map a field with a different name
+val dto = person.mapTo<PersonDTO>(
+    mappings = mapOf(Person::name to (PersonDTO::surname to MappingFallback.NULL))
+)
+
+// Transform a field value through a function
+val dto = person.mapTo<PersonDTO>(
+    functionMappings = mapOf(Person::age to ({ age: Int -> age + 5 } to (PersonDTO::age to MappingFallback.NULL)))
+)
+// out: PersonDTO(name = "John", surname = "Wick", age = 60)
+```
+
+For more information, see [Usage](#usage) below. For the full set of options, see [Advanced usage](#advanced-usage).
 
 ### Usage
 
