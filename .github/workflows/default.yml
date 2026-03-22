@@ -9,6 +9,8 @@ on:
   push:
     branches:
       - main
+  release:
+    types: [published]
 
 jobs:
   default-workflow:
@@ -16,6 +18,7 @@ jobs:
     with:
       disable-integration-test: true
       disable-unit-test: true
+      disable-publish: ${{ github.event_name != 'release' }}
       build-and-test: true
       publish-task: publishToMavenCentral
       metadata-base-url: https://repo1.maven.org/maven2

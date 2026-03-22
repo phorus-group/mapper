@@ -1,8 +1,9 @@
 package group.phorus.mapper.mapping
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.convertValue
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.DeserializationFeature
+import tools.jackson.module.kotlin.convertValue
+import tools.jackson.module.kotlin.jsonMapper
+import tools.jackson.module.kotlin.kotlinModule
 import group.phorus.mapper.mapping.MappingFunctionsTest.TestClasses.*
 import group.phorus.mapper.mapping.extensions.mapTo
 import group.phorus.mapper.mapping.extensions.mapToClass
@@ -101,7 +102,7 @@ internal class MappingFunctionsTest {
             val person = Person(23, "nameTest", "surnameTest", 87)
 
             val jacksonResult = time {
-                jacksonObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                jsonMapper { addModule(kotlinModule()); disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES) }
                     .convertValue<PersonDTO>(person)
             }
 
@@ -154,7 +155,7 @@ internal class MappingFunctionsTest {
             )
 
             val jacksonResult = time {
-                jacksonObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                jsonMapper { addModule(kotlinModule()); disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES) }
                     .convertValue<RoomDTO>(room)
             }
 

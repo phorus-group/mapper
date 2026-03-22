@@ -14,7 +14,7 @@ plugins {
 
 group = "group.phorus"
 description = "Kotlin based mapper with extra functionalities."
-version = "1.2.0"
+version = "1.2.1"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -32,7 +32,7 @@ dependencies {
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.3")
+    testImplementation("tools.jackson.module:jackson-module-kotlin:3.1.0")
 }
 
 

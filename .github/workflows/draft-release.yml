@@ -1,0 +1,13 @@
+name: "Draft Release"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  draft-release:
+    uses: phorus-group/workflows/.github/workflows/draft-release.yml@main
+    with:
+      versioning: gradle
+      slack_channel: "C0AM8AEGJG7"
+    secrets:
+      slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
