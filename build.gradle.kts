@@ -35,6 +35,14 @@ dependencies {
     testImplementation("tools.jackson.module:jackson-module-kotlin:3.1.0")
 }
 
+configurations.matching { it.name.startsWith("dokka") }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group.startsWith("com.fasterxml.jackson")) {
+            useVersion("2.18.6")
+        }
+    }
+}
+
 
 val repoUrl = System.getenv("GITHUB_REPOSITORY")?.let { "https://github.com/$it" }
     ?: "https://github.com/phorus-group/mapper"

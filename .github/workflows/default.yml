@@ -25,7 +25,8 @@ jobs:
       metadata-base-url: https://repo1.maven.org/maven2
       metadata-auth-method: none
       registry-username: ${{ vars.MAVEN_CENTRAL_USERNAME }}
-      slack-channel: "C0AM8AEGJG7"
+      slack-releases-channel: "C0AM8AEGJG7"
+      slack-failure-channel: "C0AMP6VM0EB"
       publish-environment: production
       publish-environment-url: https://mvnrepository.com/artifact/group.phorus/mapper
     secrets:

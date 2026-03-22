@@ -1,4 +1,1 @@
-# To be removed after the jackson dependency is fixed
-# It doesn't affect the library since it's only used for testing
-CVE-2022-40152
-GHSA-72hv-8253-57qq
+
