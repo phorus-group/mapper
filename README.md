@@ -3,6 +3,7 @@
 
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Maven Central](https://img.shields.io/maven-central/v/group.phorus/mapper)](https://mvnrepository.com/artifact/group.phorus/mapper)
+[![codecov](https://codecov.io/gh/phorus-group/mapper/branch/main/graph/badge.svg)](https://codecov.io/gh/phorus-group/mapper)
 
 Mapper that allows you to transform an object to another, or update an object based on the properties of another.
 

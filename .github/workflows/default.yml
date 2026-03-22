@@ -20,6 +20,7 @@ jobs:
       disable-unit-test: true
       disable-publish: ${{ github.event_name != 'release' }}
       build-and-test: true
+      enable-codecov: true
       publish-task: publishToMavenCentral
       metadata-base-url: https://repo1.maven.org/maven2
       metadata-auth-method: none
