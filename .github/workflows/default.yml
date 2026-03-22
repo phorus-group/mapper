@@ -25,6 +25,8 @@ jobs:
       metadata-auth-method: none
       registry-username: ${{ vars.MAVEN_CENTRAL_USERNAME }}
       slack-channel: "C0AM8AEGJG7"
+      publish-environment: production
+      publish-environment-url: https://mvnrepository.com/artifact/group.phorus/mapper
     secrets:
       pub-auth-value: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
       signing-key: ${{ secrets.SIGNING_KEY }}
