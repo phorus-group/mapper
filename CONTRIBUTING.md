@@ -27,9 +27,8 @@ so do familiarize yourself with the following guidelines.
 
 * All development (both new features and bug fixes) is performed in the `main` branch.
     * Base PRs against the `main` branch.
-    * The code in the `main` branch is deployed automatically as a new version.
-    * The pipeline on the `main` branch will fail if the project version was not updated. 
-      Please update the project version following the [SemVer guidelines](https://semver.org/) to have a PR as ready as possible.
+    * Releases are published via GitHub Releases.
+    * Please update the project version following the [SemVer guidelines](https://semver.org/) to have a PR as ready as possible.
 * If you make any code changes:
     * We follow the [Kotlin Coding Conventions](https://kotlinlang.org/docs/reference/coding-conventions.html).
       Use 4 spaces for indentation.
@@ -38,13 +37,12 @@ so do familiarize yourself with the following guidelines.
     * Write the test that reproduces the bug.
     * Fixes without tests are accepted only in exceptional circumstances if it can be shown that writing the
       corresponding test is too hard or otherwise impractical.
-    * Place a test for the functionality in [unit tests directory](src/test/kotlin)
     * Follow the style of writing tests that is used in this project:
       name test functions descriptively, don't use backticks in test names. Name test classes as `ClassNameTest`.
     * Fixes that, in addition to directly solving the bug, add a large piece of new functionality or change the existing one, will be considered as features.
 * If you introduce any new features or change the existing behavior:
     * Comment on the existing issue if you want to work on it or create one beforehand.
-      Ensure that the issue not only describes a problem, but also describes a solution that had received a positive feedback. 
+      Ensure that the issue not only describes a problem, but also describes a solution that had received a positive feedback.
       Propose a solution if there isn't any.
       PRs with new features, but without a corresponding issue with a positive feedback about the proposed implementation are unlikely to
       be approved.
