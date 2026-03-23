@@ -35,7 +35,7 @@ dependencies {
     testImplementation("tools.jackson.module:jackson-module-kotlin:3.1.0")
 }
 
-configurations.configureEach {
+configurations.matching { it.name.startsWith("dokka") }.configureEach {
     resolutionStrategy.eachDependency {
         if (requested.group.startsWith("com.fasterxml.jackson")) {
             useVersion("2.18.6")
