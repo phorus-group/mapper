@@ -1,0 +1,14 @@
+name: "Release Reminder"
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  release-reminder:
+    uses: phorus-group/workflows/.github/workflows/release-reminder.yml@main
+    with:
+      slack-releases-channel: "C0AM8AEGJG7"
+    secrets:
+      slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
