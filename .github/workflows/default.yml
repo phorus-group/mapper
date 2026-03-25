@@ -18,6 +18,7 @@ jobs:
     with:
       disable-integration-test: true
       disable-unit-test: true
+      disable-version-validation: ${{ github.event_name != 'release' }}
       disable-publish: ${{ github.event_name != 'release' }}
       build-and-test: true
       publish-task: publishToMavenCentral
