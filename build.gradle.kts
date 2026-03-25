@@ -28,7 +28,7 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation(kotlin("reflect"))
+    api(kotlin("reflect"))
 
     // Test
     testImplementation("org.jetbrains.kotlin:kotlin-test")
