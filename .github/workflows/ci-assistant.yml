@@ -20,7 +20,8 @@ jobs:
     with:
       java-version: "21"
       slack-failure-channel: "C0AMP6VM0EB"
-      admin-users: "irios-phorus"
+      admin-users: ${{ vars.CI_ASSISTANT_ADMIN_USERS }}
+      banned-users: ${{ vars.CI_ASSISTANT_BANNED_USERS }}
       github-app-id: "3210197"
     secrets:
       claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
