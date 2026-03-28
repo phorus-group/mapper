@@ -19,8 +19,8 @@ jobs:
       java-version: "21"
       slack-failure-channel: "C0AMP6VM0EB"
       admin-users: "irios-phorus"
+      github-app-id: "3210197"
     secrets:
       claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
-      github-app-id: ${{ secrets.CI_ASSISTANT_APP_ID }}
       github-app-private-key: ${{ secrets.CI_ASSISTANT_PRIVATE_KEY }}
