@@ -1,0 +1,26 @@
+name: "CI Assistant"
+
+on:
+  workflow_run:
+    workflows: ["Default Workflow"]
+    types: [completed]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: "Failed run ID to analyze"
+        required: true
+
+jobs:
+  ci-assistant:
+    uses: phorus-group/workflows/.github/workflows/ci-assistant.yml@main
+    with:
+      java-version: "21"
+      slack-failure-channel: "C0AMP6VM0EB"
+      admin-users: "irios-phorus"
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+      github-app-id: ${{ secrets.CI_ASSISTANT_APP_ID }}
+      github-app-private-key: ${{ secrets.CI_ASSISTANT_PRIVATE_KEY }}
