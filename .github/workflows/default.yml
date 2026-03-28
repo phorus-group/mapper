@@ -35,3 +35,18 @@ jobs:
       signing-password: ${{ secrets.SIGNING_PASSWORD }}
       slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  ci-assistant:
+    needs: [default-workflow]
+    if: ${{ failure() }}
+    uses: phorus-group/workflows/.github/workflows/ci-assistant.yml@main
+    with:
+      java-version: "21"
+      slack-failure-channel: "C0AMP6VM0EB"
+      admin-users: ${{ vars.CI_ASSISTANT_ADMIN_USERS }}
+      banned-users: ${{ vars.CI_ASSISTANT_BANNED_USERS }}
+      github-app-id: "3210197"
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+      github-app-private-key: ${{ secrets.CI_ASSISTANT_PRIVATE_KEY }}

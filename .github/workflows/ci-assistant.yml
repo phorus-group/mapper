@@ -1,9 +1,6 @@
 name: "CI Assistant"
 
 on:
-  workflow_run:
-    workflows: ["Default Workflow"]
-    types: [completed]
   issue_comment:
     types: [created]
   schedule:
