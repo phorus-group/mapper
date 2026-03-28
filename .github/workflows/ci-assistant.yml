@@ -6,6 +6,8 @@ on:
     types: [completed]
   issue_comment:
     types: [created]
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
     inputs:
       run-id:
