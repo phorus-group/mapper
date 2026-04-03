@@ -43,6 +43,7 @@ jobs:
     with:
       java-version: "21"
       slack-failure-channel: "C0AMP6VM0EB"
+      slack-thread-ts: ${{ needs.default-workflow.outputs.slack-failure-thread-ts }}
       admin-users: ${{ vars.CI_ASSISTANT_ADMIN_USERS }}
       banned-users: ${{ vars.CI_ASSISTANT_BANNED_USERS }}
       github-app-id: "3210197"
