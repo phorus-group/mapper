@@ -16,6 +16,7 @@ jobs:
     uses: phorus-group/workflows/.github/workflows/ci-assistant.yml@main
     with:
       java-version: "21"
+      cleanup: ${{ github.event_name == 'schedule' }}
       slack-failure-channel: "C0AMP6VM0EB"
       admin-users: ${{ vars.CI_ASSISTANT_ADMIN_USERS }}
       banned-users: ${{ vars.CI_ASSISTANT_BANNED_USERS }}
