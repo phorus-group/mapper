@@ -49,7 +49,7 @@ configurations.matching { it.name.startsWith("dokka") }.configureEach {
             if (requested.module.name == "jackson-databind") {
                 useVersion("2.18.9")
             } else {
-                useVersion("2.18.6")
+                useVersion("2.18.8")
             }
         }
     }
