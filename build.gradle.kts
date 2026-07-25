@@ -46,11 +46,7 @@ configurations.all {
 configurations.matching { it.name.startsWith("dokka") }.configureEach {
     resolutionStrategy.eachDependency {
         if (requested.group.startsWith("com.fasterxml.jackson")) {
-            if (requested.module.name == "jackson-databind") {
-                useVersion("2.18.9")
-            } else {
-                useVersion("2.18.6")
-            }
+            useVersion("2.18.9")
         }
     }
 }
