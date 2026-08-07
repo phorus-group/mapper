@@ -48,6 +48,9 @@ configurations.matching { it.name.startsWith("dokka") }.configureEach {
         if (requested.group.startsWith("com.fasterxml.jackson")) {
             useVersion("2.18.9")
         }
+        if (requested.group == "org.jsoup" && requested.name == "jsoup") {
+            useVersion("1.23.1")
+        }
     }
 }
 
