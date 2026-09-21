@@ -38,7 +38,7 @@ dependencies {
 configurations.all {
     resolutionStrategy.eachDependency {
         if (requested.group == "org.bouncycastle") {
-            useVersion("1.84")
+            useVersion("1.85")
         }
     }
 }
