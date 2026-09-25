@@ -51,6 +51,9 @@ configurations.matching { it.name.startsWith("dokka") }.configureEach {
         if (requested.group == "org.jsoup" && requested.name == "jsoup") {
             useVersion("1.23.1")
         }
+        if (requested.group == "org.freemarker" && requested.name == "freemarker") {
+            useVersion("2.3.35")
+        }
     }
 }
 
